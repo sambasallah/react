@@ -132,6 +132,23 @@ const forks = Object.freeze({
     }
   },
 
+  'react-reconciler/src/ReactFiberHostConfig': (bundleType, entry) => {
+    switch (entry) {
+      case 'react-dom':
+        return 'react-dom/src/client/ReactDOMHostConfig.js';
+      case 'react-art':
+        return 'react-art/src/ReactARTHostConfig.js';
+      case 'react-native':
+        return 'react-native/src/ReactNativeHostConfig.js';
+      case 'react-native/fabric':
+        return 'react-native/src/ReactFabricHostConfig.js';
+      case 'react-test-renderer':
+        return 'react-test-renderer/src/ReactTestHostConfig.js';
+      default:
+        return null;
+    }
+  },
+
   // We wrap top-level listeners into guards on www.
   'react-dom/src/events/EventListener': (bundleType, entry) => {
     switch (bundleType) {
