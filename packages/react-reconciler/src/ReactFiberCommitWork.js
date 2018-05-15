@@ -7,7 +7,6 @@
  * @flow
  */
 
-import type {HostConfig} from 'react-reconciler';
 import type {Fiber} from './ReactFiber';
 import type {FiberRoot} from './ReactFiber';
 import type {ExpirationTime} from './ReactFiberExpirationTime';

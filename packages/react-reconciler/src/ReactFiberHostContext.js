@@ -7,9 +7,8 @@
  * @flow
  */
 
-import type {HostConfig} from 'react-reconciler';
 import type {Fiber} from './ReactFiber';
-import type {StackCursor, Stack} from './ReactFiberStack';
+import type {StackCursor} from './ReactFiberStack';
 
 import invariant from 'fbjs/lib/invariant';
 

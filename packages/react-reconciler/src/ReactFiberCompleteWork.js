@@ -7,15 +7,9 @@
  * @flow
  */
 
-import type {HostConfig} from 'react-reconciler';
 import type {Fiber} from './ReactFiber';
 import type {ExpirationTime} from './ReactFiberExpirationTime';
-import type {HostContext} from './ReactFiberHostContext';
-import type {LegacyContext} from './ReactFiberContext';
-import type {NewContext} from './ReactFiberNewContext';
-import type {HydrationContext} from './ReactFiberHydrationContext';
 import type {FiberRoot} from './ReactFiberRoot';
-import type {ProfilerTimer} from './ReactProfilerTimer';
 
 import {
   enableMutatingReconciler,

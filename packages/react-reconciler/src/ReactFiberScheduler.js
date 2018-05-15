@@ -7,10 +7,9 @@
  * @flow
  */
 
-import type {HostConfig, Deadline} from 'react-reconciler';
+import type {Deadline} from 'react-reconciler';
 import type {Fiber} from './ReactFiber';
 import type {FiberRoot, Batch} from './ReactFiberRoot';
-import type {HydrationContext} from './ReactFiberHydrationContext';
 import type {ExpirationTime} from './ReactFiberExpirationTime';
 
 import ReactErrorUtils from 'shared/ReactErrorUtils';
