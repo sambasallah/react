@@ -13,6 +13,7 @@ import {
   IndeterminateComponent,
   FunctionalComponent,
   ClassComponent,
+  HostRoot,
   HostComponent,
 } from './ReactTypeOfWork';
 import describeComponentFrame from './describeComponentFrame';
@@ -50,5 +51,8 @@ export function getStackAddendumByWorkInProgressFiber(
     // Otherwise this return pointer might point to the wrong tree:
     node = node.return;
   } while (node);
+  if (!info) {
+    return 'in <top level>' // TODO: this is temporary to find regressions
+  }
   return info;
 }

@@ -56,6 +56,10 @@ if (__DEV__) {
       if (!stack) {
         throw new Error('wtf no warning');
       }
+      // TODO: run this to check mismatches
+      // if (!args.includes(stack) && args.some(arg => typeof arg === 'string' && arg.indexOf('\n    in') > -1)) {
+      //   throw new Error(' weird stack ' + args + ' \nmy stack is: \n' + stack)
+      // }
     }
 
     if (format === undefined) {
