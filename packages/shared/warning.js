@@ -5,6 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import React from 'react';
+
 /**
  * Similar to invariant but only logs a warning if the condition is not met.
  * This can be used to log issues in development environments in critical
@@ -30,6 +32,32 @@ if (__DEV__) {
   };
 
   warning = function(condition, format, ...args) {
+
+    function isIgnored(relative) {
+      for (const prefix of whitelist) {
+        if (relative.startsWith(prefix)) {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    if (
+      require('react') &&
+      require('react').__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED &&
+      require('react').__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.ReactDebugCurrentFrame &&
+      require('react').__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.ReactDebugCurrentFrame.getCurrentStack
+    ) {
+      let stack = require('react')
+        .__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED
+        .ReactDebugCurrentFrame
+        .getCurrentStack();
+      if (!stack) {
+        throw new Error('wtf no warning');
+      }
+    }
+
     if (format === undefined) {
       throw new Error(
         '`warning(condition, format, ...args)` requires a warning ' +
