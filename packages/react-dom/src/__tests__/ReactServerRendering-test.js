@@ -643,4 +643,79 @@ describe('ReactDOMServer', () => {
       ReactDOMServer.renderToString(<ClassWithRenderNotExtended />);
     }).toThrow(TypeError);
   });
+
+  fit('supports reentrant stack reporting with SSR on the top-level', () => {
+    function Reentrant() {
+      return (
+        <div>
+          <span style={{a: NaN}} />
+          {ReactDOMServer.renderToString(
+            <p>
+              {ReactDOMServer.renderToString(<blink style={{b: NaN}} />)}
+              <span style={{c: NaN}} />
+            </p>,
+          )}
+          <font style={{d: NaN}} />
+        </div>
+      );
+    }
+
+    expect(() => ReactDOMServer.renderToString(<Reentrant />)).toWarnDev([
+      // Stack before re-entering
+      '`NaN` is an invalid value for the `a` css style property.\n' +
+        '    in span (at **)\n' +
+        '    in div (at **)\n' +
+        '    in Reentrant (at **)',
+      // Deep fried stack (2 levels deep)
+      '`NaN` is an invalid value for the `b` css style property.\n' +
+        '    in blink (at **)',
+      // Reentrant stack (1 level deep)
+      '`NaN` is an invalid value for the `b` css style property.\n' +
+        '    in span (at **)\n' +
+        '    in p (at **)',
+      // Stack after re-entering
+      '`NaN` is an invalid value for the `c` css style property.\n' +
+        '    in font (at **)\n' +
+        '    in div (at **)\n' +
+        '    in Reentrant (at **)',
+    ]);
+  });
+
+  fit('supports reentrant stack reporting with client on the top-level', () => {
+    function Reentrant() {
+      return (
+        <div>
+          <span style={{a: NaN}} />
+          {ReactDOMServer.renderToString(
+            <p>
+              {ReactDOMServer.renderToString(<blink style={{b: NaN}} />)}
+              <span style={{c: NaN}} />
+            </p>,
+          )}
+          <font style={{d: NaN}} />
+        </div>
+      );
+    }
+
+    let container = document.createElement('div');
+    expect(() => ReactDOM.render(<Reentrant />, container)).toWarnDev([
+      // Stack before re-entering
+      '`NaN` is an invalid value for the `a` css style property.\n' +
+        '    in span (at **)\n' +
+        '    in div (at **)\n' +
+        '    in Reentrant (at **)',
+      // Deep fried stack (2 levels deep)
+      '`NaN` is an invalid value for the `b` css style property.\n' +
+        '    in blink (at **)',
+      // Reentrant stack (1 level deep)
+      '`NaN` is an invalid value for the `b` css style property.\n' +
+        '    in span (at **)\n' +
+        '    in p (at **)',
+      // Stack after re-entering
+      '`NaN` is an invalid value for the `c` css style property.\n' +
+        '    in font (at **)\n' +
+        '    in div (at **)\n' +
+        '    in Reentrant (at **)',
+    ]);
+  });
 });
