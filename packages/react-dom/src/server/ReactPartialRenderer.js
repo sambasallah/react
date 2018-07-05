@@ -68,9 +68,6 @@ let getStackAddendum = () => '';
 let describeStackFrame = element => '';
 
 let validatePropertiesInDevelopment = (type, props) => {};
-let setCurrentDebugStack = (stack: Array<Frame>) => {};
-let pushElementToDebugStack = (element: ReactElement) => {};
-let resetCurrentDebugStack = () => {};
 
 if (__DEV__) {
   validatePropertiesInDevelopment = function(type, props) {
@@ -85,42 +82,6 @@ if (__DEV__) {
     const name = getComponentName(type);
     const ownerName = null;
     return describeComponentFrame(name, source, ownerName);
-  };
-
-  currentDebugStack = null;
-  currentDebugElementStack = null;
-  setCurrentDebugStack = function(stack: Array<Frame>) {
-    const frame: Frame = stack[stack.length - 1];
-    currentDebugElementStack = ((frame: any): FrameDev).debugElementStack;
-    // We are about to enter a new composite stack, reset the array.
-    currentDebugElementStack.length = 0;
-    currentDebugStack = stack;
-    ReactDebugCurrentFrame.getCurrentStack = getStackAddendum;
-  };
-  pushElementToDebugStack = function(element: ReactElement) {
-    if (currentDebugElementStack !== null) {
-      currentDebugElementStack.push(element);
-    }
-  };
-  resetCurrentDebugStack = function() {
-    currentDebugElementStack = null;
-    currentDebugStack = null;
-    ReactDebugCurrentFrame.getCurrentStack = null;
-  };
-  getStackAddendum = function(): null | string {
-    if (currentDebugStack === null) {
-      return '';
-    }
-    let stack = '';
-    let debugStack = currentDebugStack;
-    for (let i = debugStack.length - 1; i >= 0; i--) {
-      const frame: Frame = debugStack[i];
-      let debugElementStack = ((frame: any): FrameDev).debugElementStack;
-      for (let ii = debugElementStack.length - 1; ii >= 0; ii--) {
-        stack += describeStackFrame(debugElementStack[ii]);
-      }
-    }
-    return stack;
   };
 }
 
@@ -180,7 +141,11 @@ function createMarkupForStyles(styles): string | null {
     const styleValue = styles[styleName];
     if (__DEV__) {
       if (!isCustomProperty) {
-        warnValidStyle(styleName, styleValue, getStackAddendum);
+        warnValidStyle(
+          styleName,
+          styleValue,
+          ReactDebugCurrentFrame.getStackAddendum,
+        );
       }
     }
     if (styleValue != null) {
@@ -305,7 +270,13 @@ function maskContext(type, context) {
 
 function checkContextTypes(typeSpecs, values, location: string) {
   if (__DEV__) {
-    checkPropTypes(typeSpecs, values, location, 'Component', getStackAddendum);
+    checkPropTypes(
+      typeSpecs,
+      values,
+      location,
+      'Component',
+      ReactDebugCurrentFrame.getStackAddendum,
+    );
   }
 }
 
@@ -388,6 +359,7 @@ function validateRenderResult(child, type) {
 function resolve(
   child: mixed,
   context: Object,
+  currentDebugElementStack, // TODO
 ): {|
   child: mixed,
   context: Object,
@@ -397,7 +369,8 @@ function resolve(
     let element: ReactElement = (child: any);
     let Component = element.type;
     if (__DEV__) {
-      pushElementToDebugStack(element);
+      // TODO !!!
+      currentDebugElementStack.push(element);
     }
     if (typeof Component !== 'function') {
       break;
@@ -773,13 +746,47 @@ class ReactDOMServerRenderer {
         continue;
       }
       const child = frame.children[frame.childIndex++];
+
+      var currentDebugElementStack;
+      var currentDebugStack;
+      var GS = function() {
+        if (currentDebugStack === null) {
+          return '';
+        }
+        let stack = '';
+        let debugStack = currentDebugStack;
+        for (let i = debugStack.length - 1; i >= 0; i--) {
+          const frame: Frame = debugStack[i];
+          let debugElementStack = ((frame: any): FrameDev).debugElementStack;
+          for (let ii = debugElementStack.length - 1; ii >= 0; ii--) {
+            stack += describeStackFrame(debugElementStack[ii]);
+          }
+        }
+        return stack;
+      };
+
       if (__DEV__) {
-        setCurrentDebugStack(this.stack);
+        // TODO
+        var stack = this.stack;
+        const frame: Frame = stack[stack.length - 1];
+        currentDebugElementStack = ((frame: any): FrameDev).debugElementStack;
+        // We are about to enter a new composite stack, reset the array.
+        currentDebugElementStack.length = 0;
+        currentDebugStack = stack;
+
+        ReactDebugCurrentFrame.pushStackImplementation(GS);
+        // TODO !!!
       }
-      out += this.render(child, frame.context, frame.domNamespace);
+      out += this.render(
+        child,
+        frame.context,
+        frame.domNamespace,
+        currentDebugElementStack, // TODO
+      );
       if (__DEV__) {
-        // TODO: Handle reentrant server render calls. This doesn't.
-        resetCurrentDebugStack();
+        // TODO !!!
+        ReactDebugCurrentFrame.popStackImplementation(GS);
+        // TODO !!!
       }
     }
     return out;
@@ -789,6 +796,7 @@ class ReactDOMServerRenderer {
     child: ReactNode | null,
     context: Object,
     parentNamespace: string,
+    currentDebugElementStack, // TODO
   ): string {
     if (typeof child === 'string' || typeof child === 'number') {
       const text = '' + child;
@@ -805,7 +813,11 @@ class ReactDOMServerRenderer {
       return escapeTextForBrowser(text);
     } else {
       let nextChild;
-      ({child: nextChild, context} = resolve(child, context));
+      ({child: nextChild, context} = resolve(
+        child,
+        context,
+        currentDebugElementStack, // TODO
+      ));
       if (nextChild === null || nextChild === false) {
         return '';
       } else if (!React.isValidElement(nextChild)) {
@@ -1005,7 +1017,7 @@ class ReactDOMServerRenderer {
         ReactControlledValuePropTypes.checkPropTypes(
           'input',
           props,
-          getStackAddendum,
+          ReactDebugCurrentFrame.getStackAddendum,
         );
 
         if (
@@ -1063,7 +1075,7 @@ class ReactDOMServerRenderer {
         ReactControlledValuePropTypes.checkPropTypes(
           'textarea',
           props,
-          getStackAddendum,
+          ReactDebugCurrentFrame.getStackAddendum,
         );
         if (
           props.value !== undefined &&
@@ -1124,7 +1136,7 @@ class ReactDOMServerRenderer {
         ReactControlledValuePropTypes.checkPropTypes(
           'select',
           props,
-          getStackAddendum,
+          ReactDebugCurrentFrame.getStackAddendum,
         );
 
         for (let i = 0; i < valuePropNames.length; i++) {
@@ -1215,7 +1227,7 @@ class ReactDOMServerRenderer {
       validatePropertiesInDevelopment(tag, props);
     }
 
-    assertValidProps(tag, props, getStackAddendum);
+    assertValidProps(tag, props, ReactDebugCurrentFrame.getStackAddendum);
 
     let out = createOpenTagMarkup(
       element.type,

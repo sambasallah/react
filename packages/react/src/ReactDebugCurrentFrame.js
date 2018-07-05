@@ -10,12 +10,34 @@
 const ReactDebugCurrentFrame = {};
 
 if (__DEV__) {
-  // Component that is being worked on
-  ReactDebugCurrentFrame.getCurrentStack = (null: null | (() => string | null));
+  let implStack = [];
+
+  var getCurrentStackImplementation = function() {
+    return implStack[implStack.length - 1];
+  };
+
+  ReactDebugCurrentFrame.pushStackImplementation = function(
+    getStack: () => string | null,
+  ): void {
+    console.log('push');
+    // if (getCurrentStackImplementation() !== getStack) {
+    implStack.push(getStack);
+    // }
+  };
+
+  ReactDebugCurrentFrame.popStackImplementation = function(
+    getStack: () => string | null,
+  ): void {
+    console.log('pop');
+    // if (getCurrentStackImplementation() === getStack) {
+    implStack.pop();
+    // }
+  };
 
   ReactDebugCurrentFrame.getStackAddendum = function(): string | null {
-    const impl = ReactDebugCurrentFrame.getCurrentStack;
-    if (impl) {
+    console.log('get', implStack.length);
+    if (implStack.length > 0) {
+      const impl = getCurrentStackImplementation();
       return impl();
     }
     return null;

@@ -43,13 +43,13 @@ function getCurrentFiberStackAddendum(): string | null {
 }
 
 function resetCurrentFiber() {
-  ReactDebugCurrentFrame.getCurrentStack = null;
+  ReactDebugCurrentFrame.popStackImplementation(getCurrentFiberStackAddendum);
   ReactDebugCurrentFiber.current = null;
   ReactDebugCurrentFiber.phase = null;
 }
 
 function setCurrentFiber(fiber: Fiber) {
-  ReactDebugCurrentFrame.getCurrentStack = getCurrentFiberStackAddendum;
+  ReactDebugCurrentFrame.pushStackImplementation(getCurrentFiberStackAddendum);
   ReactDebugCurrentFiber.current = fiber;
   ReactDebugCurrentFiber.phase = null;
 }
