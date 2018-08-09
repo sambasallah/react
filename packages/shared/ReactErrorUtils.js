@@ -32,7 +32,7 @@ const ReactErrorUtils = {
    * @param {*} context The context to use when calling the function
    * @param {...*} args Arguments for function
    */
-  invokeGuardedCallback: function<A, B, C, D, E, F, Context>(
+  invokeGuardedCallback<A, B, C, D, E, F, Context>(
     name: string | null,
     func: (a: A, b: B, c: C, d: D, e: E, f: F) => mixed,
     context: Context,
@@ -56,7 +56,7 @@ const ReactErrorUtils = {
    * @param {*} context The context to use when calling the function
    * @param {...*} args Arguments for function
    */
-  invokeGuardedCallbackAndCatchFirstError: function<A, B, C, D, E, F, Context>(
+  invokeGuardedCallbackAndCatchFirstError<A, B, C, D, E, F, Context>(
     name: string | null,
     func: (a: A, b: B, c: C, d: D, e: E, f: F) => void,
     context: Context,
@@ -81,15 +81,15 @@ const ReactErrorUtils = {
    * During execution of guarded functions we will capture the first error which
    * we will rethrow to be handled by the top level error handler.
    */
-  rethrowCaughtError: function() {
+  rethrowCaughtError() {
     return rethrowCaughtError.apply(ReactErrorUtils, arguments);
   },
 
-  hasCaughtError: function() {
+  hasCaughtError() {
     return ReactErrorUtils._hasCaughtError;
   },
 
-  clearCaughtError: function() {
+  clearCaughtError() {
     if (ReactErrorUtils._hasCaughtError) {
       const error = ReactErrorUtils._caughtError;
       ReactErrorUtils._caughtError = null;
@@ -102,6 +102,10 @@ const ReactErrorUtils = {
           'is likely caused by a bug in React. Please file an issue.',
       );
     }
+  },
+
+  isErrorSuppressed(error: any): boolean {
+    return !!(error && error.suppressReactErrorLogging);
   },
 };
 

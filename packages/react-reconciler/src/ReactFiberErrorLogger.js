@@ -9,6 +9,8 @@
 
 import type {CapturedError} from './ReactCapturedValue';
 
+import ReactErrorUtils from 'shared/ReactErrorUtils';
+
 import {showErrorDialog} from './ReactFiberErrorDialog';
 
 export function logCapturedError(capturedError: CapturedError): void {
@@ -21,8 +23,7 @@ export function logCapturedError(capturedError: CapturedError): void {
   }
 
   const error = (capturedError.error: any);
-  const suppressLogging = error && error.suppressReactErrorLogging;
-  if (suppressLogging) {
+  if (ReactErrorUtils.isErrorSuppressed(error)) {
     return;
   }
 
