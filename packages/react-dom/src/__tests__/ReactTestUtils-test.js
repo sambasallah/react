@@ -43,6 +43,22 @@ describe('ReactTestUtils', () => {
     expect(Object.keys(ReactTestUtils.SimulateNative).sort()).toMatchSnapshot();
   });
 
+  it('SimulateNative should warn about deprecation', () => {
+    let container = document.createElement('div');
+    let node = ReactDOM.render(<div />, container);
+    expect(() =>
+      ReactTestUtils.SimulateNative.click(node),
+    ).toLowPriorityWarnDev(
+      'ReactTestUtils.SimulateNative is an undocumented API that does not match ' +
+        'how the browser dispatches events, and will be removed in a future major ' +
+        'version of React. If you rely on it for testing, consider attaching the root ' +
+        'DOM container to the document during the test, and then dispatching native browser ' +
+        'events by calling `node.dispatchEvent()` on the DOM nodes. Make sure to set ' +
+        'the `bubbles` flag to `true` when creating the native browser event.',
+      {withoutStack: true},
+    );
+  });
+
   it('gives Jest mocks a passthrough implementation with mockComponent()', () => {
     class MockedComponent extends React.Component {
       render() {
