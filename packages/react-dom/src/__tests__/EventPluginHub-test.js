@@ -13,32 +13,61 @@ jest.mock('../events/isEventSupported');
 
 describe('EventPluginHub', () => {
   let React;
-  let ReactTestUtils;
+  let ReactDOM;
+  let container;
 
   beforeEach(() => {
     jest.resetModules();
     React = require('react');
-    ReactTestUtils = require('react-dom/test-utils');
+    ReactDOM = require('react-dom');
+
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    document.body.removeChild(container);
+    container = null;
   });
 
   it('should prevent non-function listeners, at dispatch', () => {
     let node;
     expect(() => {
-      node = ReactTestUtils.renderIntoDocument(
-        <div onClick="not a function" />,
-      );
+      node = ReactDOM.render(<div onClick="not a function" />, container);
     }).toWarnDev(
       'Expected `onClick` listener to be a function, instead got a value of `string` type.',
     );
-    expect(() => ReactTestUtils.SimulateNative.click(node)).toThrowError(
-      'Expected `onClick` listener to be a function, instead got a value of `string` type.',
+
+    let uncaughtErrors = [];
+    function handleWindowError(e) {
+      uncaughtErrors.push(e.error);
+    }
+    window.addEventListener('error', handleWindowError);
+    try {
+      node.dispatchEvent(
+        new MouseEvent('click', {
+          bubbles: true,
+        }),
+      );
+    } finally {
+      window.removeEventListener('error', handleWindowError);
+    }
+    expect(uncaughtErrors.length).toBe(1);
+    expect(uncaughtErrors[0]).toEqual(
+      expect.objectContaining({
+        message:
+          'Expected `onClick` listener to be a function, ' +
+          'instead got a value of `string` type.',
+      }),
     );
   });
 
   it('should not prevent null listeners, at dispatch', () => {
-    const node = ReactTestUtils.renderIntoDocument(<div onClick={null} />);
-    expect(function() {
-      ReactTestUtils.SimulateNative.click(node);
-    }).not.toThrow();
+    const node = ReactDOM.render(<div onClick={null} />, container);
+    node.dispatchEvent(
+      new MouseEvent('click', {
+        bubbles: true,
+      }),
+    );
   });
 });
