@@ -40,9 +40,4 @@ if (typeof window !== 'undefined') {
   // Also prevent JSDOM from logging intentionally thrown errors.
   // TODO: it might make sense to do it the other way around.
   // https://github.com/facebook/react/issues/11098#issuecomment-355032539
-  window.addEventListener('error', event => {
-    if (event.error != null && event.error.suppressReactErrorLogging) {
-      event.preventDefault();
-    }
-  });
 }

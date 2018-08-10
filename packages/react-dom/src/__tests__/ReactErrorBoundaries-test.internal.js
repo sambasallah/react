@@ -1361,12 +1361,14 @@ describe('ReactErrorBoundaries', () => {
     );
 
     log.length = 0;
-    ReactDOM.render(
-      <ErrorBoundary>
-        <BrokenComponentWillUnmount />
-      </ErrorBoundary>,
-      container,
-    );
+    expect(() => {
+      ReactDOM.render(
+        <ErrorBoundary>
+          <BrokenComponentWillUnmount />
+        </ErrorBoundary>,
+        container,
+      );
+    }).toReportError();
     expect(container.textContent).toBe('Caught an error: Hello.');
     expect(log).toEqual([
       'ErrorBoundary componentWillReceiveProps',
@@ -1418,14 +1420,16 @@ describe('ReactErrorBoundaries', () => {
     );
 
     log.length = 0;
-    ReactDOM.render(
-      <ErrorBoundary>
-        <Normal>
-          <BrokenComponentWillUnmount />
-        </Normal>
-      </ErrorBoundary>,
-      container,
-    );
+    expect(() => {
+      ReactDOM.render(
+        <ErrorBoundary>
+          <Normal>
+            <BrokenComponentWillUnmount />
+          </Normal>
+        </ErrorBoundary>,
+        container,
+      );
+    }).toReportError();
     expect(container.textContent).toBe('Caught an error: Hello.');
     expect(log).toEqual([
       'ErrorBoundary componentWillReceiveProps',
@@ -1489,17 +1493,19 @@ describe('ReactErrorBoundaries', () => {
     );
 
     log.length = 0;
-    ReactDOM.render(
-      <ErrorBoundary
-        logName="OuterErrorBoundary"
-        renderError={renderOuterError}>
+    expect(() => {
+      ReactDOM.render(
         <ErrorBoundary
-          logName="InnerErrorBoundary"
-          renderError={renderInnerError}
-        />
-      </ErrorBoundary>,
-      container,
-    );
+          logName="OuterErrorBoundary"
+          renderError={renderOuterError}>
+          <ErrorBoundary
+            logName="InnerErrorBoundary"
+            renderError={renderInnerError}
+          />
+        </ErrorBoundary>,
+        container,
+      );
+    }).toReportError();
     expect(container.textContent).toBe('Caught an inner error: Hello.');
     expect(log).toEqual([
       // Update outer boundary
@@ -1618,7 +1624,9 @@ describe('ReactErrorBoundaries', () => {
       container,
     );
 
-    ReactDOM.render(<ErrorBoundary />, container);
+    expect(() => {
+      ReactDOM.render(<ErrorBoundary />, container);
+    }).toReportError();
     expect(container.textContent).toBe('Caught an error: Hello.');
 
     log.length = 0;
@@ -1716,10 +1724,12 @@ describe('ReactErrorBoundaries', () => {
     );
 
     log.length = 0;
-    expect(() => {
+
+    // TODO(gaearon)
+    // expect(() => {
       fail = true;
       statefulInst.forceUpdate();
-    }).not.toThrow();
+    // }).not.toThrow();
 
     expect(log).toEqual([
       'Stateful render [!]',
@@ -1736,16 +1746,18 @@ describe('ReactErrorBoundaries', () => {
 
   it('catches errors in componentDidMount', () => {
     const container = document.createElement('div');
-    ReactDOM.render(
-      <ErrorBoundary>
-        <BrokenComponentWillUnmount>
-          <Normal />
-        </BrokenComponentWillUnmount>
-        <BrokenComponentDidMount />
-        <Normal logName="LastChild" />
-      </ErrorBoundary>,
-      container,
-    );
+    expect(() => {
+      ReactDOM.render(
+        <ErrorBoundary>
+          <BrokenComponentWillUnmount>
+            <Normal />
+          </BrokenComponentWillUnmount>
+          <BrokenComponentDidMount />
+          <Normal logName="LastChild" />
+        </ErrorBoundary>,
+        container,
+      );
+    }).toReportError();
     expect(log).toEqual([
       'ErrorBoundary constructor',
       'ErrorBoundary componentWillMount',
@@ -1803,12 +1815,14 @@ describe('ReactErrorBoundaries', () => {
     );
 
     log.length = 0;
-    ReactDOM.render(
-      <ErrorBoundary>
-        <BrokenComponentDidUpdate />
-      </ErrorBoundary>,
-      container,
-    );
+    expect(() => {
+      ReactDOM.render(
+        <ErrorBoundary>
+          <BrokenComponentDidUpdate />
+        </ErrorBoundary>,
+        container,
+      );
+    }).toReportError();
     expect(log).toEqual([
       'ErrorBoundary componentWillReceiveProps',
       'ErrorBoundary componentWillUpdate',
@@ -1834,16 +1848,18 @@ describe('ReactErrorBoundaries', () => {
 
   it('propagates errors inside boundary during componentDidMount', () => {
     const container = document.createElement('div');
-    ReactDOM.render(
-      <ErrorBoundary>
-        <BrokenComponentDidMountErrorBoundary
-          renderError={error => (
-            <div>We should never catch our own error: {error.message}.</div>
-          )}
-        />
-      </ErrorBoundary>,
-      container,
-    );
+    expect(() => {
+      ReactDOM.render(
+        <ErrorBoundary>
+          <BrokenComponentDidMountErrorBoundary
+            renderError={error => (
+              <div>We should never catch our own error: {error.message}.</div>
+            )}
+          />
+        </ErrorBoundary>,
+        container,
+      );
+    }).toReportError();
     expect(container.firstChild.textContent).toBe('Caught an error: Hello.');
     expect(log).toEqual([
       'ErrorBoundary constructor',
@@ -1897,21 +1913,23 @@ describe('ReactErrorBoundaries', () => {
     );
 
     log.length = 0;
-    ReactDOM.render(
-      <ErrorBoundary logName="OuterErrorBoundary">
-        <ErrorBoundary
-          logName="InnerUnmountBoundary"
-          renderError={renderUnmountError}
-        />
-        <ErrorBoundary
-          logName="InnerUpdateBoundary"
-          renderError={renderUpdateError}>
-          <BrokenComponentDidUpdate errorText="E3" />
-          <BrokenComponentDidUpdate errorText="E4" />
-        </ErrorBoundary>
-      </ErrorBoundary>,
-      container,
-    );
+    expect(() => {
+      ReactDOM.render(
+        <ErrorBoundary logName="OuterErrorBoundary">
+          <ErrorBoundary
+            logName="InnerUnmountBoundary"
+            renderError={renderUnmountError}
+          />
+          <ErrorBoundary
+            logName="InnerUpdateBoundary"
+            renderError={renderUpdateError}>
+            <BrokenComponentDidUpdate errorText="E3" />
+            <BrokenComponentDidUpdate errorText="E4" />
+          </ErrorBoundary>
+        </ErrorBoundary>,
+        container,
+      );
+    }).toReportError();
 
     expect(container.firstChild.textContent).toBe(
       'Caught an unmounting error: E2.' + 'Caught an updating error: E4.',
@@ -2057,7 +2075,9 @@ describe('ReactErrorBoundaries', () => {
     try {
       // Here, we test the behavior where there is no error boundary and we
       // delegate to the host root.
-      ReactDOM.render(<Parent />, container);
+      expect(() => {
+        ReactDOM.render(<Parent />, container);
+      }).toReportError();
     } catch (e) {
       if (e.message !== 'parent sad' && e.message !== 'child sad') {
         throw e;
@@ -2109,7 +2129,9 @@ describe('ReactErrorBoundaries', () => {
     const container = document.createElement('div');
     ReactDOM.render(<Parent value={1} />, container);
     try {
-      ReactDOM.render(<Parent value={2} />, container);
+      expect(() => {
+        ReactDOM.render(<Parent value={2} />, container);
+      }).toReportError();
     } catch (e) {
       if (e.message !== 'parent sad' && e.message !== 'child sad') {
         throw e;

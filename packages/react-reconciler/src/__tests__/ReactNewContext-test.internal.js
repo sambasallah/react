@@ -515,7 +515,9 @@ describe('ReactNewContext', () => {
         }
 
         ReactNoop.render(<App value="A" />);
-        ReactNoop.flush();
+        expect(() => {
+          ReactNoop.flush();  
+        }).toReportError();
         expect(ReactNoop.getChildren()).toEqual([
           // The second provider should use the default value.
           span('Result: Does not unwind'),

@@ -42,9 +42,57 @@ if (process.env.REACT_CLASS_EQUIVALENCE_TEST) {
     global.spyOnDevAndProd = spyOn;
   }
 
+  function normalizeCodeLocInfo(str) {
+    return str && str.replace(/\(at .+?:\d+\)/g, '(at **)');
+  }
+
+  function wrapThrowingMatcher(originalMatcher) {
+    if (typeof originalMatcher !== 'function') {
+      // https://github.com/facebook/jest/issues/6243
+      throw new Error('We depend on this private Jest export. Fix me.');
+    }
+    return function (fn, ...args) {
+      return originalMatcher(() => {
+        try {
+          expect(fn).toReportError();
+        } catch (err) {
+          if (err.message) {
+            err.message = normalizeCodeLocInfo(err.message)
+          }
+          throw err;
+        }
+      }, ...args);
+    };
+  }
+
+  const builtInThrowingMatchers = require('expect/build/to_throw_matchers').default;
   expect.extend({
     ...require('./matchers/toWarnDev'),
     ...require('./matchers/testRenderer'),
+    toThrow: wrapThrowingMatcher(builtInThrowingMatchers.toThrow),
+    toThrowError: wrapThrowingMatcher(builtInThrowingMatchers.toThrowError),
+    toReportError(fn) {
+      let didReportError = false;
+      function onError(event) {
+        // Suppress logging for intentional errors
+        event.preventDefault();
+        didReportError = true;
+      }
+      if (typeof window !== 'undefined') {
+        window.addEventListener('error', onError);
+      }
+      try {
+        fn();
+      } finally {
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('error', onError);
+        }        
+      }
+      return {
+        pass: didReportError
+        // TODO(gaearon)
+      }
+    }
   });
 
   // We have a Babel transform that inserts guards against infinite loops.
