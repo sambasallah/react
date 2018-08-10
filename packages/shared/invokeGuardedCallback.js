@@ -29,6 +29,7 @@ let invokeGuardedCallback = function<A, B, C, D, E, F, Context>(
     this._caughtError = error;
     this._hasCaughtError = true;
   }
+  return false;
 };
 
 if (__DEV__) {
@@ -71,7 +72,7 @@ if (__DEV__) {
       d: D,
       e: E,
       f: F,
-    ) {
+    ): boolean {
       // If document doesn't exist we know for sure we will crash in this method
       // when we call document.createEvent(). However this can cause confusing
       // errors: https://github.com/facebookincubator/create-react-app/issues/3482
@@ -125,14 +126,22 @@ if (__DEV__) {
       // Use this to track whether the error event is ever called.
       let didSetError = false;
       let isCrossOriginError = false;
+      let isSuppressed = false;
 
-      function onError(event) {
+      const onError = event => {
         error = event.error;
         didSetError = true;
         if (error === null && event.colno === 0 && event.lineno === 0) {
           isCrossOriginError = true;
         }
-      }
+        if (event.defaultPrevented) {
+          // The user opted out of logging this error.
+          isSuppressed = true;
+          if (this._suppressedErrors) {
+            this._suppressedErrors.add(error);
+          }
+        }
+      };
 
       // Create a fake event type.
       const evtType = `react-${name ? name : 'invokeguardedcallback'}`;
@@ -175,6 +184,7 @@ if (__DEV__) {
 
       // Remove our event listeners
       window.removeEventListener('error', onError);
+      return isSuppressed;
     };
 
     invokeGuardedCallback = invokeGuardedCallbackDev;

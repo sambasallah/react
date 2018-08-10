@@ -155,6 +155,7 @@ const {
   invokeGuardedCallback,
   hasCaughtError,
   clearCaughtError,
+  markErrorAsSuppressed,
 } = ReactErrorUtils;
 
 let didWarnAboutStateTransition;
@@ -301,7 +302,11 @@ if (__DEV__ && replayFailedUnitOfWorkWithInvokeGuardedCallback) {
     // Replay the begin phase.
     isReplayingFailedUnitOfWork = true;
     originalReplayError = thrownValue;
-    invokeGuardedCallback(null, workLoop, null, isYieldy);
+    const isSuppressed = invokeGuardedCallback(null, workLoop, null, isYieldy);
+    if (isSuppressed) {
+      // Also suppress the original error from being logged.
+      markErrorAsSuppressed(thrownValue);
+    }
     isReplayingFailedUnitOfWork = false;
     originalReplayError = null;
     if (hasCaughtError()) {
@@ -1093,8 +1098,13 @@ function renderRoot(
         }
 
         const failedUnitOfWork: Fiber = nextUnitOfWork;
-        if (__DEV__ && replayFailedUnitOfWorkWithInvokeGuardedCallback) {
-          replayUnitOfWork(failedUnitOfWork, thrownValue, isYieldy);
+        if (__DEV__) {
+          if (replayFailedUnitOfWorkWithInvokeGuardedCallback) {
+            replayUnitOfWork(failedUnitOfWork, thrownValue, isYieldy);
+          } else {
+            // TODO(gaearon)
+            markErrorAsSuppressed(thrownValue);
+          }
         }
 
         // TODO: we already know this isn't true in some cases.

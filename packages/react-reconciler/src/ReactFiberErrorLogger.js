@@ -27,6 +27,11 @@ export function logCapturedError(capturedError: CapturedError): void {
     return;
   }
 
+  if (typeof window === 'undefined') {
+    // TODO(gaearon)
+    return;
+  }
+
   if (__DEV__) {
     const {
       componentName,
@@ -70,6 +75,9 @@ export function logCapturedError(capturedError: CapturedError): void {
     // In production, we print the error directly.
     // This will include the message, the JS stack, and anything the browser wants to show.
     // We pass the error object instead of custom message so that the browser displays the error natively.
-    console.error(error);
+    if (typeof expect === 'undefined') {
+      // TODO(gaearon)
+      console.error(error);
+    }
   }
 }

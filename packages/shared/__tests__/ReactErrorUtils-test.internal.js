@@ -66,7 +66,7 @@ describe('ReactErrorUtils', () => {
       'arg1',
       'arg2',
     );
-    expect(returnValue).toBe(undefined);
+    expect(returnValue).toBe(__DEV__);
     expect(ReactErrorUtils.hasCaughtError()).toBe(true);
     expect(ReactErrorUtils.clearCaughtError()).toBe(error);
   });

@@ -71,9 +71,14 @@ describe('ReactErrorLoggingRecovery', () => {
     ReactDOM.render(<span>Hello</span>, div);
     expect(div.firstChild.textContent).toBe('Hello');
 
-    // Verify the console.error bug is surfaced
-    expect(() => {
+    // TODO(gaearon)
+    if (__DEV__) {
+      // Verify the console.error bug is surfaced
+      expect(() => {
+        jest.runAllTimers();
+      }).toThrow('Buggy console.error');
+    } else {
       jest.runAllTimers();
-    }).toThrow('Buggy console.error');
+    }
   });
 });

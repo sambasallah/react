@@ -14,6 +14,10 @@ const ReactErrorUtils = {
   // Used by Fiber to simulate a try-catch.
   _caughtError: (null: mixed),
   _hasCaughtError: (false: boolean),
+  // $FlowFixMe WeakSet typing isn't correct in Flow
+  _suppressedErrors: ((typeof WeakSet === 'function'
+    ? new WeakSet()
+    : null): any),
 
   // Used by event system to capture/rethrow the first error.
   _rethrowError: (null: mixed),
@@ -42,8 +46,8 @@ const ReactErrorUtils = {
     d: D,
     e: E,
     f: F,
-  ): void {
-    invokeGuardedCallback.apply(ReactErrorUtils, arguments);
+  ): boolean {
+    return invokeGuardedCallback.apply(ReactErrorUtils, arguments);
   },
 
   /**
@@ -66,8 +70,11 @@ const ReactErrorUtils = {
     d: D,
     e: E,
     f: F,
-  ): void {
-    ReactErrorUtils.invokeGuardedCallback.apply(this, arguments);
+  ): boolean {
+    const isSuppressed = ReactErrorUtils.invokeGuardedCallback.apply(
+      this,
+      arguments,
+    );
     if (ReactErrorUtils.hasCaughtError()) {
       const error = ReactErrorUtils.clearCaughtError();
       if (!ReactErrorUtils._hasRethrowError) {
@@ -75,6 +82,7 @@ const ReactErrorUtils = {
         ReactErrorUtils._rethrowError = error;
       }
     }
+    return isSuppressed;
   },
 
   /**
@@ -105,7 +113,18 @@ const ReactErrorUtils = {
   },
 
   isErrorSuppressed(error: any): boolean {
-    return !!(error && error.suppressReactErrorLogging);
+    const suppressedErrors = ReactErrorUtils._suppressedErrors;
+    if (suppressedErrors) {
+      return suppressedErrors.has(error);
+    }
+    return false;
+  },
+
+  markErrorAsSuppressed(error: any) {
+    const suppressedErrors = ReactErrorUtils._suppressedErrors;
+    if (suppressedErrors) {
+      return suppressedErrors.add(error);
+    }
   },
 };
 

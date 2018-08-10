@@ -14,6 +14,7 @@ import type {CapturedValue} from './ReactCapturedValue';
 import type {Update} from './ReactUpdateQueue';
 import type {Thenable} from './ReactFiberScheduler';
 
+import ReactErrorUtils from 'shared/ReactErrorUtils';
 import {
   IndeterminateComponent,
   FunctionalComponent,
@@ -320,6 +321,9 @@ function throwException(
     value = new Error(
       'An update was suspended, but no placeholder UI was provided.',
     );
+
+    // TODO(gaearon)
+    ReactErrorUtils.markErrorAsSuppressed(value);
   }
 
   // We didn't find a boundary that could handle this type of exception. Start
