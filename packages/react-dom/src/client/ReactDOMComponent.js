@@ -336,6 +336,86 @@ function updateDOMProperties(
   }
 }
 
+function updateLocalListeners(
+  tag,
+  domElement,
+  rawProps,
+  rootContainerElement,
+  needsHostProps,
+) {
+  // TODO: Make sure that we check isMounted before firing any of these events.
+  switch (tag) {
+    case 'iframe':
+    case 'object':
+      trapBubbledEvent(TOP_LOAD, domElement);
+      break;
+    case 'video':
+    case 'audio':
+      // Create listener for each media event
+      for (let i = 0; i < mediaEventTypes.length; i++) {
+        trapBubbledEvent(mediaEventTypes[i], domElement);
+      }
+      break;
+    case 'source':
+      trapBubbledEvent(TOP_ERROR, domElement);
+      break;
+    case 'img':
+    case 'image':
+    case 'link':
+      trapBubbledEvent(TOP_ERROR, domElement);
+      trapBubbledEvent(TOP_LOAD, domElement);
+      break;
+    case 'form':
+      trapBubbledEvent(TOP_RESET, domElement);
+      trapBubbledEvent(TOP_SUBMIT, domElement);
+      break;
+    case 'details':
+      trapBubbledEvent(TOP_TOGGLE, domElement);
+      break;
+    case 'input':
+      ReactDOMInput.initWrapperState(domElement, rawProps);
+      trapBubbledEvent(TOP_INVALID, domElement);
+      // For controlled components we always need to ensure we're listening
+      // to onChange. Even if there is no listener.
+      ensureListeningTo(rootContainerElement, 'onChange');
+      if (needsHostProps) {
+        return ReactDOMInput.getHostProps(domElement, rawProps);
+      } else {
+        return null;
+      }
+    case 'option':
+      ReactDOMOption.validateProps(domElement, rawProps);
+      if (needsHostProps) {
+        return ReactDOMOption.getHostProps(domElement, rawProps);
+      } else {
+        return null;
+      }
+    case 'select':
+      ReactDOMSelect.initWrapperState(domElement, rawProps);
+      trapBubbledEvent(TOP_INVALID, domElement);
+      // For controlled components we always need to ensure we're listening
+      // to onChange. Even if there is no listener.
+      ensureListeningTo(rootContainerElement, 'onChange');
+      if (needsHostProps) {
+        return ReactDOMSelect.getHostProps(domElement, rawProps);
+      } else {
+        return null;
+      }
+    case 'textarea':
+      ReactDOMTextarea.initWrapperState(domElement, rawProps);
+      trapBubbledEvent(TOP_INVALID, domElement);
+      // For controlled components we always need to ensure we're listening
+      // to onChange. Even if there is no listener.
+      ensureListeningTo(rootContainerElement, 'onChange');
+      if (needsHostProps) {
+        return ReactDOMTextarea.getHostProps(domElement, rawProps);
+      } else {
+        return null;
+      }
+  }
+  return needsHostProps ? rawProps : null;
+}
+
 export function createElement(
   type: string,
   props: Object,
@@ -454,65 +534,13 @@ export function setInitialProperties(
     }
   }
 
-  // TODO: Make sure that we check isMounted before firing any of these events.
-  let props: Object = rawProps;
-  switch (tag) {
-    case 'iframe':
-    case 'object':
-      trapBubbledEvent(TOP_LOAD, domElement);
-      break;
-    case 'video':
-    case 'audio':
-      // Create listener for each media event
-      for (let i = 0; i < mediaEventTypes.length; i++) {
-        trapBubbledEvent(mediaEventTypes[i], domElement);
-      }
-      break;
-    case 'source':
-      trapBubbledEvent(TOP_ERROR, domElement);
-      break;
-    case 'img':
-    case 'image':
-    case 'link':
-      trapBubbledEvent(TOP_ERROR, domElement);
-      trapBubbledEvent(TOP_LOAD, domElement);
-      break;
-    case 'form':
-      trapBubbledEvent(TOP_RESET, domElement);
-      trapBubbledEvent(TOP_SUBMIT, domElement);
-      break;
-    case 'details':
-      trapBubbledEvent(TOP_TOGGLE, domElement);
-      break;
-    case 'input':
-      ReactDOMInput.initWrapperState(domElement, rawProps);
-      props = ReactDOMInput.getHostProps(domElement, rawProps);
-      trapBubbledEvent(TOP_INVALID, domElement);
-      // For controlled components we always need to ensure we're listening
-      // to onChange. Even if there is no listener.
-      ensureListeningTo(rootContainerElement, 'onChange');
-      break;
-    case 'option':
-      ReactDOMOption.validateProps(domElement, rawProps);
-      props = ReactDOMOption.getHostProps(domElement, rawProps);
-      break;
-    case 'select':
-      ReactDOMSelect.initWrapperState(domElement, rawProps);
-      props = ReactDOMSelect.getHostProps(domElement, rawProps);
-      trapBubbledEvent(TOP_INVALID, domElement);
-      // For controlled components we always need to ensure we're listening
-      // to onChange. Even if there is no listener.
-      ensureListeningTo(rootContainerElement, 'onChange');
-      break;
-    case 'textarea':
-      ReactDOMTextarea.initWrapperState(domElement, rawProps);
-      props = ReactDOMTextarea.getHostProps(domElement, rawProps);
-      trapBubbledEvent(TOP_INVALID, domElement);
-      // For controlled components we always need to ensure we're listening
-      // to onChange. Even if there is no listener.
-      ensureListeningTo(rootContainerElement, 'onChange');
-      break;
-  }
+  let props: Object = ((updateLocalListeners(
+    tag,
+    domElement,
+    rawProps,
+    rootContainerElement,
+    true,
+  ): any): Object);
 
   assertValidProps(tag, props);
 
@@ -838,61 +866,7 @@ export function diffHydratedProperties(
     }
   }
 
-  // TODO: Make sure that we check isMounted before firing any of these events.
-  switch (tag) {
-    case 'iframe':
-    case 'object':
-      trapBubbledEvent(TOP_LOAD, domElement);
-      break;
-    case 'video':
-    case 'audio':
-      // Create listener for each media event
-      for (let i = 0; i < mediaEventTypes.length; i++) {
-        trapBubbledEvent(mediaEventTypes[i], domElement);
-      }
-      break;
-    case 'source':
-      trapBubbledEvent(TOP_ERROR, domElement);
-      break;
-    case 'img':
-    case 'image':
-    case 'link':
-      trapBubbledEvent(TOP_ERROR, domElement);
-      trapBubbledEvent(TOP_LOAD, domElement);
-      break;
-    case 'form':
-      trapBubbledEvent(TOP_RESET, domElement);
-      trapBubbledEvent(TOP_SUBMIT, domElement);
-      break;
-    case 'details':
-      trapBubbledEvent(TOP_TOGGLE, domElement);
-      break;
-    case 'input':
-      ReactDOMInput.initWrapperState(domElement, rawProps);
-      trapBubbledEvent(TOP_INVALID, domElement);
-      // For controlled components we always need to ensure we're listening
-      // to onChange. Even if there is no listener.
-      ensureListeningTo(rootContainerElement, 'onChange');
-      break;
-    case 'option':
-      ReactDOMOption.validateProps(domElement, rawProps);
-      break;
-    case 'select':
-      ReactDOMSelect.initWrapperState(domElement, rawProps);
-      trapBubbledEvent(TOP_INVALID, domElement);
-      // For controlled components we always need to ensure we're listening
-      // to onChange. Even if there is no listener.
-      ensureListeningTo(rootContainerElement, 'onChange');
-      break;
-    case 'textarea':
-      ReactDOMTextarea.initWrapperState(domElement, rawProps);
-      trapBubbledEvent(TOP_INVALID, domElement);
-      // For controlled components we always need to ensure we're listening
-      // to onChange. Even if there is no listener.
-      ensureListeningTo(rootContainerElement, 'onChange');
-      break;
-  }
-
+  updateLocalListeners(tag, domElement, rawProps, rootContainerElement, false);
   assertValidProps(tag, rawProps);
 
   if (__DEV__) {
