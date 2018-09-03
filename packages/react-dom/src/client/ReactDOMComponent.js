@@ -455,12 +455,11 @@ export function setInitialProperties(
   }
 
   // TODO: Make sure that we check isMounted before firing any of these events.
-  let props: Object;
+  let props: Object = rawProps;
   switch (tag) {
     case 'iframe':
     case 'object':
       trapBubbledEvent(TOP_LOAD, domElement);
-      props = rawProps;
       break;
     case 'video':
     case 'audio':
@@ -468,27 +467,22 @@ export function setInitialProperties(
       for (let i = 0; i < mediaEventTypes.length; i++) {
         trapBubbledEvent(mediaEventTypes[i], domElement);
       }
-      props = rawProps;
       break;
     case 'source':
       trapBubbledEvent(TOP_ERROR, domElement);
-      props = rawProps;
       break;
     case 'img':
     case 'image':
     case 'link':
       trapBubbledEvent(TOP_ERROR, domElement);
       trapBubbledEvent(TOP_LOAD, domElement);
-      props = rawProps;
       break;
     case 'form':
       trapBubbledEvent(TOP_RESET, domElement);
       trapBubbledEvent(TOP_SUBMIT, domElement);
-      props = rawProps;
       break;
     case 'details':
       trapBubbledEvent(TOP_TOGGLE, domElement);
-      props = rawProps;
       break;
     case 'input':
       ReactDOMInput.initWrapperState(domElement, rawProps);
@@ -518,8 +512,6 @@ export function setInitialProperties(
       // to onChange. Even if there is no listener.
       ensureListeningTo(rootContainerElement, 'onChange');
       break;
-    default:
-      props = rawProps;
   }
 
   assertValidProps(tag, props);
