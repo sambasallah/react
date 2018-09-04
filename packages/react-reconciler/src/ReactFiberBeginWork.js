@@ -40,6 +40,7 @@ import {
   DidCapture,
   Update,
   Ref,
+  ClassDidBailout,
 } from 'shared/ReactSideEffectTags';
 import ReactSharedInternals from 'shared/ReactSharedInternals';
 import {
@@ -87,6 +88,7 @@ import {
   isContextProvider as isLegacyContextProvider,
   pushTopLevelContextObject,
   invalidateContextProvider,
+  pushClassBailout,
 } from './ReactFiberContext';
 import {
   enterHydrationState,
@@ -364,6 +366,11 @@ function finishClassComponent(
   markRef(current, workInProgress);
 
   const didCaptureError = (workInProgress.effectTag & DidCapture) !== NoEffect;
+
+  if (!shouldUpdate && !hasContext) {
+    workInProgress.effectTag |= ClassDidBailout;
+    pushClassBailout(workInProgress);
+  }
 
   if (!shouldUpdate && !didCaptureError) {
     // Context providers should defer to sCU for rendering

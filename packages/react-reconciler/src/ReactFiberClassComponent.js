@@ -11,7 +11,7 @@ import type {Fiber} from './ReactFiber';
 import type {ExpirationTime} from './ReactFiberExpirationTime';
 
 import React from 'react';
-import {Update, Snapshot} from 'shared/ReactSideEffectTags';
+import {Update, Snapshot, ClasDidBailout} from 'shared/ReactSideEffectTags';
 import {
   debugRenderPhaseSideEffects,
   debugRenderPhaseSideEffectsForStrictMode,

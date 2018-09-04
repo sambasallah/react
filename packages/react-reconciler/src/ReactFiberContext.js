@@ -217,6 +217,14 @@ function processChildContext(
   return {...parentContext, ...childContext};
 }
 
+function pushClassBailout(workInProgress: Fiber) {
+  push(didPerformWorkStackCursor, false, workInProgress);
+}
+
+function popClassBailout(workInProgress: Fiber) {
+  pop(didPerformWorkStackCursor, workInProgress);
+}
+
 function pushContextProvider(workInProgress: Fiber): boolean {
   const instance = workInProgress.stateNode;
   // We push the context as early as possible to ensure stack integrity.
@@ -327,4 +335,6 @@ export {
   pushContextProvider,
   invalidateContextProvider,
   findCurrentUnmaskedContext,
+  pushClassBailout,
+  popClassBailout,
 };

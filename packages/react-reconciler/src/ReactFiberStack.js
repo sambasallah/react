@@ -10,6 +10,7 @@
 import type {Fiber} from './ReactFiber';
 
 import warningWithoutStack from 'shared/warningWithoutStack';
+import getComponentName from 'shared/getComponentName';
 
 export type StackCursor<T> = {
   current: T,
@@ -38,14 +39,23 @@ function isEmpty(): boolean {
 function pop<T>(cursor: StackCursor<T>, fiber: Fiber): void {
   if (index < 0) {
     if (__DEV__) {
-      warningWithoutStack(false, 'Unexpected pop.');
+      warningWithoutStack(
+        false,
+        'Unexpected pop: %s.',
+        getComponentName(fiber.type),
+      );
     }
     return;
   }
 
   if (__DEV__) {
     if (fiber !== fiberStack[index]) {
-      warningWithoutStack(false, 'Unexpected Fiber popped.');
+      warningWithoutStack(
+        false,
+        'Unexpected Fiber popped: %s. Expected to pop: %s.',
+        getComponentName(fiber.type),
+        getComponentName(fiberStack[index].type),
+      );
     }
   }
 

@@ -39,7 +39,14 @@ import {
   PlaceholderComponent,
   ForwardRefLazy,
 } from 'shared/ReactWorkTags';
-import {Placement, Ref, Update} from 'shared/ReactSideEffectTags';
+import {
+  Placement,
+  Ref,
+  Update,
+  PerformedWork,
+  ClassDidBailout,
+  NoEffect,
+} from 'shared/ReactSideEffectTags';
 import invariant from 'shared/invariant';
 import {getResultFromResolvedThenable} from 'shared/ReactLazyComponent';
 
@@ -66,6 +73,7 @@ import {
   isContextProvider as isLegacyContextProvider,
   popContext as popLegacyContext,
   popTopLevelContextObject as popTopLevelLegacyContextObject,
+  popClassBailout,
 } from './ReactFiberContext';
 import {popProvider} from './ReactFiberNewContext';
 import {
@@ -324,6 +332,8 @@ function completeWork(
       const Component = workInProgress.type;
       if (isLegacyContextProvider(Component)) {
         popLegacyContext(workInProgress);
+      } else if ((workInProgress.effectTag & ClassDidBailout) !== NoEffect) {
+        popClassBailout(workInProgress);
       }
       break;
     }
@@ -331,6 +341,8 @@ function completeWork(
       const Component = getResultFromResolvedThenable(workInProgress.type);
       if (isLegacyContextProvider(Component)) {
         popLegacyContext(workInProgress);
+      } else if ((workInProgress.effectTag & ClassDidBailout) !== NoEffect) {
+        popClassBailout(workInProgress);
       }
       break;
     }

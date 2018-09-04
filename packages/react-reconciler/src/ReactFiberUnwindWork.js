@@ -30,6 +30,7 @@ import {
   Incomplete,
   NoEffect,
   ShouldCapture,
+  ClassDidBailout,
   Update as UpdateEffect,
   LifecycleEffectMask,
 } from 'shared/ReactSideEffectTags';
@@ -51,6 +52,7 @@ import {
   isContextProvider as isLegacyContextProvider,
   popContext as popLegacyContext,
   popTopLevelContextObject as popTopLevelLegacyContextObject,
+  popClassBailout,
 } from './ReactFiberContext';
 import {popProvider} from './ReactFiberNewContext';
 import {
@@ -387,25 +389,31 @@ function unwindWork(
   switch (workInProgress.tag) {
     case ClassComponent: {
       const Component = workInProgress.type;
-      if (isLegacyContextProvider(Component)) {
+      const effectTag = workInProgress.effectTag;
+      const hasContext = isLegacyContextProvider(Component);
+      if (hasContext) {
         popLegacyContext(workInProgress);
       }
-      const effectTag = workInProgress.effectTag;
       if (effectTag & ShouldCapture) {
         workInProgress.effectTag = (effectTag & ~ShouldCapture) | DidCapture;
         return workInProgress;
+      } else if (!hasContext && effectTag & (ClassDidBailout !== NoEffect)) {
+        popClassBailout(workInProgress);
       }
       return null;
     }
     case ClassComponentLazy: {
       const Component = workInProgress.type._reactResult;
-      if (isLegacyContextProvider(Component)) {
+      const effectTag = workInProgress.effectTag;
+      const hasContext = isLegacyContextProvider(Component);
+      if (hasContext) {
         popLegacyContext(workInProgress);
       }
-      const effectTag = workInProgress.effectTag;
       if (effectTag & ShouldCapture) {
         workInProgress.effectTag = (effectTag & ~ShouldCapture) | DidCapture;
         return workInProgress;
+      } else if (!hasContext && effectTag & (ClassDidBailout !== NoEffect)) {
+        popClassBailout(workInProgress);
       }
       return null;
     }
@@ -450,6 +458,8 @@ function unwindInterruptedWork(interruptedWork: Fiber) {
       const childContextTypes = interruptedWork.type.childContextTypes;
       if (childContextTypes !== null && childContextTypes !== undefined) {
         popLegacyContext(interruptedWork);
+      } else if ((interruptedWork.effectTag & ClassDidBailout) !== NoEffect) {
+        popClassBailout(interruptedWork);
       }
       break;
     }
@@ -458,6 +468,8 @@ function unwindInterruptedWork(interruptedWork: Fiber) {
         interruptedWork.type._reactResult.childContextTypes;
       if (childContextTypes !== null && childContextTypes !== undefined) {
         popLegacyContext(interruptedWork);
+      } else if ((interruptedWork.effectTag & ClassDidBailout) !== NoEffect) {
+        popClassBailout(interruptedWork);
       }
       break;
     }

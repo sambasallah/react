@@ -1529,6 +1529,13 @@ describe('ReactNewContext', () => {
     it('hard-coded tests', () => {
       const {simulate} = ContextSimulator(5);
       simulate('randomSeed', [flush(3), update('A', 4)]);
+      simulate('klnvm', [
+        flush(336),
+        update('G', 9),
+        flush(182),
+        flush(36),
+        update('D', 9),
+      ]);
     });
 
     it('generated tests', () => {
