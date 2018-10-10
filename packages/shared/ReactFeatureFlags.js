@@ -10,8 +10,6 @@
 // Exports ReactDOM.createRoot
 export const enableUserTimingAPI = __DEV__;
 
-// Suspense
-export const enableSuspense = false;
 // Helps identify side effects in begin-phase lifecycle hooks and setState reducers:
 export const debugRenderPhaseSideEffects = false;
 
