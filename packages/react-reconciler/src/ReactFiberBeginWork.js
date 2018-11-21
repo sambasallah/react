@@ -213,6 +213,23 @@ function updateForwardRef(
   nextProps: any,
   renderExpirationTime: ExpirationTime,
 ) {
+  if (__DEV__) {
+    if (workInProgress.type !== workInProgress.elementType) {
+      // Lazy component props can't be validated in createElement
+      // because they're only guaranteed to be resolved here.
+      const innerPropTypes = Component.propTypes;
+      if (innerPropTypes) {
+        checkPropTypes(
+          innerPropTypes,
+          nextProps, // Resolved props
+          'prop',
+          getComponentName(Component),
+          getCurrentFiberStackInDev,
+        );
+      }
+    }
+  }
+
   const render = Component.render;
   const ref = workInProgress.ref;
 
@@ -269,6 +286,19 @@ function updateMemoComponent(
         renderExpirationTime,
       );
     }
+    if (__DEV__) {
+      const type = Component.type;
+      const innerPropTypes = type.propTypes;
+      if (innerPropTypes) {
+        checkPropTypes(
+          innerPropTypes,
+          nextProps, // Resolved props
+          'prop',
+          getComponentName(type),
+          getCurrentFiberStackInDev,
+        );
+      }
+    }
     let child = createFiberFromTypeAndProps(
       Component.type,
       null,
@@ -281,6 +311,19 @@ function updateMemoComponent(
     child.return = workInProgress;
     workInProgress.child = child;
     return child;
+  }
+  if (__DEV__) {
+    const type = Component.type;
+    const innerPropTypes = type.propTypes;
+    if (innerPropTypes) {
+      checkPropTypes(
+        innerPropTypes,
+        nextProps, // Resolved props
+        'prop',
+        getComponentName(type),
+        getCurrentFiberStackInDev,
+      );
+    }
   }
   let currentChild = ((current.child: any): Fiber); // This is always exactly one child
   if (updateExpirationTime < renderExpirationTime) {
@@ -329,6 +372,18 @@ function updateSimpleMemoComponent(
         current,
         workInProgress,
         renderExpirationTime,
+      );
+    }
+  }
+  if (__DEV__) {
+    const innerPropTypes = Component.propTypes;
+    if (innerPropTypes) {
+      checkPropTypes(
+        innerPropTypes,
+        nextProps, // Resolved props
+        'prop',
+        getComponentName(Component),
+        getCurrentFiberStackInDev,
       );
     }
   }
@@ -408,6 +463,23 @@ function updateFunctionComponent(
   nextProps: any,
   renderExpirationTime,
 ) {
+  if (__DEV__) {
+    if (workInProgress.type !== workInProgress.elementType) {
+      // Lazy component props can't be validated in createElement
+      // because they're only guaranteed to be resolved here.
+      const innerPropTypes = Component.propTypes;
+      if (innerPropTypes) {
+        checkPropTypes(
+          innerPropTypes,
+          nextProps, // Resolved props
+          'prop',
+          getComponentName(Component),
+          getCurrentFiberStackInDev,
+        );
+      }
+    }
+  }
+
   const unmaskedContext = getUnmaskedContext(workInProgress, Component, true);
   const context = getMaskedContext(workInProgress, unmaskedContext);
 
@@ -442,6 +514,23 @@ function updateClassComponent(
   nextProps,
   renderExpirationTime: ExpirationTime,
 ) {
+  if (__DEV__) {
+    if (workInProgress.type !== workInProgress.elementType) {
+      // Lazy component props can't be validated in createElement
+      // because they're only guaranteed to be resolved here.
+      const innerPropTypes = Component.propTypes;
+      if (innerPropTypes) {
+        checkPropTypes(
+          innerPropTypes,
+          nextProps, // Resolved props
+          'prop',
+          getComponentName(Component),
+          getCurrentFiberStackInDev,
+        );
+      }
+    }
+  }
+
   // Push context providers early to prevent context stack mismatches.
   // During mounting we don't know the child context yet as the instance doesn't exist.
   // We will invalidate the child context in finishClassComponent() right after rendering.
@@ -827,7 +916,8 @@ function mountLazyComponent(
         null,
         workInProgress,
         Component,
-        resolveDefaultProps(Component.type, resolvedProps), // The inner type can have defaults too
+        // The inner type can have defaults too
+        resolveDefaultProps(Component.type, resolvedProps),
         updateExpirationTime,
         renderExpirationTime,
       );
@@ -1762,11 +1852,13 @@ function beginWork(
       );
     }
     case SimpleMemoComponent: {
+      const type = workInProgress.type;
+      const pendingProps = workInProgress.pendingProps;
       return updateSimpleMemoComponent(
         current,
         workInProgress,
-        workInProgress.type,
-        workInProgress.pendingProps,
+        type,
+        pendingProps,
         updateExpirationTime,
         renderExpirationTime,
       );
