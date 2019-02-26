@@ -928,8 +928,8 @@
       "filename": "eslint-plugin-react-hooks.development.js",
       "bundleType": "NODE_DEV",
       "packageName": "eslint-plugin-react-hooks",
-      "size": 26115,
-      "gzip": 6005
+      "size": 50006,
+      "gzip": 11777
     },
     {
       "filename": "eslint-plugin-react-hooks.production.min.js",

@@ -179,7 +179,6 @@ const tests = {
     `,
     },
     {
-      // TODO: we might want to forbid dot-access in deps.
       code: `
       function MyComponent(props) {
         useEffect(() => {
@@ -189,7 +188,6 @@ const tests = {
     `,
     },
     {
-      // TODO: we might want to forbid dot-access in deps.
       code: `
       function MyComponent(props) {
         useEffect(() => {
@@ -200,7 +198,6 @@ const tests = {
     `,
     },
     {
-      // TODO: we might want to forbid dot-access in deps.
       code: `
       function MyComponent(props) {
         useEffect(() => {
@@ -211,7 +208,6 @@ const tests = {
     `,
     },
     {
-      // TODO: we might want to forbid dot-access in deps.
       code: `
       function MyComponent(props) {
         const local = 42;
@@ -247,7 +243,6 @@ const tests = {
       options: [{additionalHooks: 'useCustomEffect'}],
     },
     {
-      // TODO: we might want to forbid dot-access in deps.
       code: `
         function MyComponent(props) {
           useCustomEffect(() => {
@@ -1756,6 +1751,28 @@ const tests = {
       ],
     },
     {
+      only: true,
+      code: `
+        function MyComponent(props) {
+          useEffect(() => {
+            helper(props);
+          }, []);
+        }
+      `,
+      output: `
+        function MyComponent(props) {
+          useEffect(() => {
+            helper(props);
+          }, [props]);
+        }
+      `,
+      errors: [
+        "React Hook useEffect has a missing dependency: 'props'. " +
+          'Either include it or remove the dependency array.'
+      ],
+    },
+    {
+      only: true,
       code: `
         function MyComponent(props) {
           useEffect(() => {
@@ -1765,20 +1782,97 @@ const tests = {
           }, []);
         }
       `,
-      // TODO: [props.onChange] is superfluous. Fix to just [props.onChange].
       output: `
         function MyComponent(props) {
           useEffect(() => {
             if (props.onChange) {
               props.onChange();
             }
-          }, [props, props.onChange]);
+          }, [props]);
         }
       `,
       errors: [
-        // TODO: reporting props separately is superfluous. Fix to just props.onChange.
-        "React Hook useEffect has missing dependencies: 'props' and 'props.onChange'. " +
-          'Either include them or remove the dependency array.',
+      // TODO
+        "React Hook useEffect has a missing dependency: 'props'. " +
+          'Either include it or remove the dependency array.'
+      ],
+    },
+    {
+      only: true,
+      code: `
+        function MyComponent(props) {
+          useEffect(() => {
+            if (props.onChange) {
+              props.onChange();
+            }
+          }, [props.onChange]);
+        }
+      `,
+      output: `
+        function MyComponent(props) {
+          useEffect(() => {
+            if (props.onChange) {
+              props.onChange();
+            }
+          }, [props]);
+        }
+      `,
+      errors: [
+      // TODO
+        "React Hook useEffect has a missing dependency: 'props'. " +
+          'Either include it or remove the dependency array.'
+      ],
+    },
+    {
+      only: true,
+      code: `
+        function MyComponent(props) {
+          useEffect(() => {
+            if (props.cond && props.onChange) {
+              props.onChange();
+            }
+          }, []);
+        }
+      `,
+      output: `
+        function MyComponent(props) {
+          useEffect(() => {
+            if (props.cond && props.onChange) {
+              props.onChange();
+            }
+          }, [props]);
+        }
+      `,
+      errors: [
+        "React Hook useEffect has a missing dependency: 'props'. " +
+          'Either include it or remove the dependency array.'
+      ],
+    },
+    {
+      only: true,
+      code: `
+        function MyComponent(props) {
+          let cond = props.cond;
+          useEffect(() => {
+            if (cond && props.onChange) {
+              props.onChange();
+            }
+          }, []);
+        }
+      `,
+      output: `
+        function MyComponent(props) {
+          let cond = props.cond;
+          useEffect(() => {
+            if (cond && props.onChange) {
+              props.onChange();
+            }
+          }, [cond, props]);
+        }
+      `,
+      errors: [
+        "React Hook useEffect has missing dependencies: 'cond' and 'props'. " +
+          'Either include them or remove the dependency array.'
       ],
     },
     {
