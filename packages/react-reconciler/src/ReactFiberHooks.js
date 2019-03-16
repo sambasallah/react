@@ -742,9 +742,9 @@ function updateReducer<S, I, A>(
     hook.baseUpdate = newBaseUpdate;
     hook.baseState = newBaseState;
 
-    queue.eagerReducer = reducer;
     queue.eagerState = newState;
   }
+  queue.eagerReducer = reducer;
 
   const dispatch: Dispatch<A> = (queue.dispatch: any);
   return [hook.memoizedState, dispatch];
