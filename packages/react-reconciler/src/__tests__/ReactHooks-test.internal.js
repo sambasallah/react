@@ -1699,6 +1699,84 @@ describe('ReactHooks', () => {
     ).toThrow('Hello');
   });
 
+  fit('stuff', () => {
+    const {useState, useEffect} = React;
+
+    function createAtom() {
+      let state = {};
+      let listeners = [];
+      const get = () => state;
+      function observe(f) {
+        listeners.push(f);
+        return function unobserve() {
+          listeners = listeners.filter(l => l !== f);
+        };
+      }
+      function set(update, options = {}) {
+        state = {...state, ...update};
+        listeners.forEach(l => l(atom));
+      }
+      return { get, set, observe };
+    }
+
+    function useAtom({ atom, name }) {
+      const [state, setState] = useState(atom.get());
+      useEffect(
+        () => {
+          let done = false;
+          const dispose = atom.observe(() => {
+            if (done) return;
+            setState(atom.get());
+          });
+          return () => {
+            done = true;
+            dispose();
+          };
+        },
+        [atom, setState]
+      );
+      return state;
+    }
+
+    const atom = createAtom({}, {});
+
+    function Dashboard() {
+      return <div>App</div>;
+    }
+
+    function Onboarding() {
+      useAtom({ atom, name: "Onboarding" });
+      return <div>Setup</div>;
+    }
+
+    function App() {
+      const { phase } = useAtom({ atom, name: "App" });
+      useEffect(() => {
+        if (!phase) {
+          atom.set({ phase: "onboarding" });
+        } else if (phase === "onboarded") {
+          atom.set({ phase: "ready" });
+        }
+      });
+      if (!phase) {
+        return <div>Initialising...</div>;
+      }
+      return phase === "ready" ? <Dashboard /> : <Onboarding />;
+    }
+
+    ReactTestRenderer.act(() => {
+      ReactTestRenderer.create(<App />);
+    });
+    expect(Scheduler).toFlushAndYield([])
+    expect(() => {
+      atom.set({ phase: "onboarded" });
+    }).toWarnDev([
+      'An update to ',
+      'An update to '
+    ])
+    expect(Scheduler).toFlushAndYield([])
+  });
+
   it('does not fire a false positive warning when previous effect unmounts the component', () => {
     let {useState, useEffect} = React;
     let globalListener;
@@ -1732,7 +1810,7 @@ describe('ReactHooks', () => {
           hideMe();
         };
       });
-      return null;
+      return <button onClick={() => globalListener()}>Click me</button>;
     }
 
     ReactTestRenderer.act(() => {
