@@ -1412,9 +1412,9 @@ describe('ReactUpdates', () => {
       let error = null;
       let stack = null;
       let originalConsoleError = console.error;
-      console.error = (e, s) => {
+      console.error = (e, s1, s2) => {
         error = e;
-        stack = s;
+        stack = s1 + s2;
       };
       try {
         const container = document.createElement('div');

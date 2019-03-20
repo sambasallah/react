@@ -212,8 +212,8 @@ const ValidatorProvider = props => {
   };
 
   const contextValues = {
-    register: (id, rules) => dispatch(register(id, rules)),
-    unregister: id => dispatch(unregister(id)),
+    registerFormInput: (id, rules) => dispatch(register(id, rules)),
+    unregisterFormInput: id => dispatch(unregister(id)),
     updateValue: (id, value) => dispatch(updateValue(id, value)),
     validate,
     invalid,
@@ -259,18 +259,18 @@ const SubmitButton = props => {
 };
 
 const useRegister = props => {
-  const { register, unregister, updateValue, invalid, values } = useContext(
+  const { registerFormInput, unregisterFormInput, updateValue, invalid, values } = useContext(
     context
   );
 
   useEffect(
     () => {
-      register(props.name, props.rules || []);
+      registerFormInput(props.name, props.rules || []);
       return function cleanup() {
-        unregister(props.name);
+        unregisterFormInput(props.name);
       };
     },
-    [props.name, props.rules, register, unregister]
+    [props.name, props.rules, registerFormInput, unregisterFormInput]
   );
 
   return {

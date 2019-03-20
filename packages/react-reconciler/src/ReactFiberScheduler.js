@@ -538,6 +538,9 @@ function commitPassiveEffects(root: FiberRoot, firstEffect: Fiber): void {
   const previousIsRendering = isRendering;
   isRendering = true;
 
+  let badEffect;
+  let badStack = '';
+
   let effect = firstEffect;
   do {
     if (__DEV__) {
@@ -548,10 +551,15 @@ function commitPassiveEffects(root: FiberRoot, firstEffect: Fiber): void {
       let didError = false;
       let error;
       if (__DEV__) {
+        didSchedule = null;
         invokeGuardedCallback(null, commitPassiveHookEffects, null, effect);
         if (hasCaughtError()) {
           didError = true;
           error = clearCaughtError();
+        }
+        if (didSchedule) {
+          badEffect = effect;
+          badStack = didSchedule;
         }
       } else {
         try {
@@ -600,11 +608,14 @@ function commitPassiveEffects(root: FiberRoot, firstEffect: Fiber): void {
     if (nestedAsyncUpdateCount > NESTED_UPDATE_LIMIT) {
       // Reset this back to zero so subsequent updates don't throw.
       nestedAsyncUpdateCount = 0;
-      setCurrentFiber(firstEffect);
+      if (badEffect) {
+        setCurrentFiber(badEffect);
+      }
       warning(
         false,
         'Maximum update depth exceeded. This can happen when a ' +
-          'component repeatedly calls setState inside useEffect.'
+          'component repeatedly calls setState inside useEffect.\n%s',
+          badStack
       );
       resetCurrentFiber();
     }
@@ -1874,7 +1885,9 @@ export function warnIfNotCurrentlyBatchingInDev(fiber: Fiber): void {
   }
 }
 
+let didSchedule = false;
 function scheduleWork(fiber: Fiber, expirationTime: ExpirationTime) {
+  didSchedule = new Error().stack;
   const root = scheduleWorkToRoot(fiber, expirationTime);
   if (root === null) {
     if (__DEV__) {
