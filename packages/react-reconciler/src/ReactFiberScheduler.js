@@ -67,6 +67,7 @@ import {
 } from 'shared/ReactFeatureFlags';
 import getComponentName from 'shared/getComponentName';
 import invariant from 'shared/invariant';
+import warning from 'shared/warning';
 import warningWithoutStack from 'shared/warningWithoutStack';
 
 import ReactFiberInstrumentation from './ReactFiberInstrumentation';
@@ -580,6 +581,33 @@ function commitPassiveEffects(root: FiberRoot, firstEffect: Fiber): void {
   // Flush any sync work that was scheduled by effects
   if (!isBatchingUpdates && !isRendering) {
     performSyncWork();
+  }
+
+  // Check if this is a nested update (a sync update scheduled during the
+  // commit phase).
+  if (root === lastCommittedRootDuringThisBatch) {
+    // If the next root is the same as the previous root, this is a nested
+    // update. To prevent an infinite loop, increment the nested update count.
+    nestedAsyncUpdateCount++;
+  } else {
+    // Reset whenever we switch roots.
+    lastCommittedRootDuringThisBatch = root;
+    nestedUpdateCount = 0;
+    nestedAsyncUpdateCount = 0;
+  }
+
+  if (__DEV__) {
+    if (nestedAsyncUpdateCount > NESTED_UPDATE_LIMIT) {
+      // Reset this back to zero so subsequent updates don't throw.
+      nestedAsyncUpdateCount = 0;
+      setCurrentFiber(firstEffect);
+      warning(
+        false,
+        'Maximum update depth exceeded. This can happen when a ' +
+          'component repeatedly calls setState inside useEffect.'
+      );
+      resetCurrentFiber();
+    }
   }
 }
 
@@ -1960,6 +1988,7 @@ let currentSchedulerTime: ExpirationTime = currentRendererTime;
 // Use these to prevent an infinite loop of nested updates
 const NESTED_UPDATE_LIMIT = 50;
 let nestedUpdateCount: number = 0;
+let nestedAsyncUpdateCount: number = 0;
 let lastCommittedRootDuringThisBatch: FiberRoot | null = null;
 
 function recomputeCurrentRendererTime() {
@@ -2323,8 +2352,12 @@ function flushRoot(root: FiberRoot, expirationTime: ExpirationTime) {
 }
 
 function finishRendering() {
+  // TODO: GC?
   nestedUpdateCount = 0;
-  lastCommittedRootDuringThisBatch = null;
+  if (passiveEffectCallback === null) {
+    nestedAsyncUpdateCount = 0;
+    lastCommittedRootDuringThisBatch = null;
+  }
 
   if (completedBatches !== null) {
     const batches = completedBatches;
@@ -2462,6 +2495,7 @@ function completeRoot(
     // Reset whenever we switch roots.
     lastCommittedRootDuringThisBatch = root;
     nestedUpdateCount = 0;
+    nestedAsyncUpdateCount = 0;
   }
   commitRoot(root, finishedWork);
 }

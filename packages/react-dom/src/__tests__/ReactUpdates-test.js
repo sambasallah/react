@@ -11,6 +11,7 @@
 
 let React;
 let ReactDOM;
+let Scheduler;
 let ReactTestUtils;
 
 describe('ReactUpdates', () => {
@@ -19,6 +20,7 @@ describe('ReactUpdates', () => {
     React = require('react');
     ReactDOM = require('react-dom');
     ReactTestUtils = require('react-dom/test-utils');
+    Scheduler = require('scheduler');
   });
 
   it('should batch state when updating state twice', () => {
@@ -1391,6 +1393,44 @@ describe('ReactUpdates', () => {
       ReactDOM.render(<NonTerminating />, container);
     }).toThrow('Maximum');
   });
+
+  if (__DEV__) {
+    fit('warns about a deferred infinite update loop with useEffect', async () => {
+      function NonTerminating() {
+        const [step, setStep] = React.useState(0);
+        React.useEffect(() => {
+          setStep(x => x + 1);
+          Scheduler.yieldValue(step);
+        });
+        return step;
+      }
+
+      function App() {
+        return <NonTerminating />
+      }
+
+      let error = null;
+      let stack = null;
+      let originalConsoleError = console.error;
+      console.error = (e, s) => {
+        error = e;
+        stack = s;
+      };
+      try {
+        const container = document.createElement('div');
+        ReactDOM.render(<App />, container);
+        let err;
+        while (error === null) {
+          Scheduler.unstable_flushNumberOfYields(1);
+          await Promise.resolve()
+        }
+        expect(error).toContain('Warning: Maximum update depth exceeded.');
+        expect(stack).toContain('in NonTerminating')
+      } finally {
+        console.error = originalConsoleError;
+      }
+    });
+  }
 
   it('can recover after falling into an infinite update loop', () => {
     class NonTerminating extends React.Component {

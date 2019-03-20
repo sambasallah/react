@@ -4,8 +4,8 @@
       "filename": "react.development.js",
       "bundleType": "UMD_DEV",
       "packageName": "react",
-      "size": 102492,
-      "gzip": 26625
+      "size": 102773,
+      "gzip": 26719
     },
     {
       "filename": "react.production.min.js",
@@ -18,8 +18,8 @@
       "filename": "react.development.js",
       "bundleType": "NODE_DEV",
       "packageName": "react",
-      "size": 64139,
-      "gzip": 17318
+      "size": 64420,
+      "gzip": 17394
     },
     {
       "filename": "react.production.min.js",
@@ -46,8 +46,8 @@
       "filename": "react-dom.development.js",
       "bundleType": "UMD_DEV",
       "packageName": "react-dom",
-      "size": 803793,
-      "gzip": 183116
+      "size": 816787,
+      "gzip": 185446
     },
     {
       "filename": "react-dom.production.min.js",
@@ -60,8 +60,8 @@
       "filename": "react-dom.development.js",
       "bundleType": "NODE_DEV",
       "packageName": "react-dom",
-      "size": 798048,
-      "gzip": 181482
+      "size": 810456,
+      "gzip": 183637
     },
     {
       "filename": "react-dom.production.min.js",
@@ -886,8 +886,8 @@
       "filename": "jest-react.development.js",
       "bundleType": "NODE_DEV",
       "packageName": "jest-react",
-      "size": 7455,
-      "gzip": 2737
+      "size": 7100,
+      "gzip": 2546
     },
     {
       "filename": "jest-react.production.min.js",

@@ -5,8 +5,308 @@
     <script src="https://unpkg.com/babel-standalone@6/babel.js"></script>
     <div id="container"></div>
     <script type="text/babel">
+
+const {useState, useEffect, useContext, useReducer} = React
+
+function RunApp() {
+  return (
+    <div className="App">
+      <ValidatorProvider>
+        <App />
+      </ValidatorProvider>
+    </div>
+  );
+}
+
+const REGISTERED_FORM_ELEMENT = "REGISTERED_FORM_ELEMENT";
+const UNREGISTERED_FORM_ELEMENT = "UNREGISTERED_FORM_ELEMENT";
+const FORM_ELEMENT_UPDATED = "FORM_ELEMENT_UPDATED";
+const FORM_VALIDATION_RESULT = "FORM_VALIDATION_RESULT";
+const context = React.createContext("form-validator");
+
+function reducer(state, action) {
+  switch (action.type) {
+    case REGISTERED_FORM_ELEMENT: {
+      return {
+        ...state,
+        components: [
+          ...state.components,
+          { id: action.id, rules: action.rules }
+        ]
+      };
+    }
+    case FORM_ELEMENT_UPDATED: {
+      return {
+        ...state,
+        values: {
+          ...state.values,
+          [action.id]: action.value
+        }
+      };
+    }
+    case UNREGISTERED_FORM_ELEMENT: {
+      const index = state.components.findIndex(c => c.id === action.id);
+
+      if (index > -1) {
+        return {
+          ...state,
+          components: [
+            ...state.components.slice(0, index),
+            ...state.components.slice(index + 1)
+          ]
+        };
+      }
+      return state;
+    }
+    case FORM_VALIDATION_RESULT: {
+      return { ...state, invalid: action.invalid };
+    }
+    default: {
+      return state;
+    }
+  }
+}
+
+
+const ep = /^[0-9a-zA-Z]+([0-9a-zA-Z]*[-._+])*[0-9a-zA-Z]+@[0-9a-zA-Z]+([-.][0-9a-zA-Z]+)*([0-9a-zA-Z]*[.])[a-zA-Z]{2,6}$/;
+const email =message => ({
+  validate: value => !value || ep.test(value),
+  hint: () => message || "Not a valid email"
+});
+
+const required = message => ({
+  handlesNull: true,
+  validate: value => {
+    if (value === 0) {
+      return true;
+    }
+    if (value === -1 || value === "-1") {
+      return false;
+    }
+    let val = value;
+    const validate = !!val && (val += "").trim();
+    return validate;
+  },
+  hint: () => message || "This field is mandatory"
+});
+
+
+
+const register = (id, rules) => ({
+  type: REGISTERED_FORM_ELEMENT,
+  id,
+  rules
+});
+
+const unregister = id => ({
+  type: UNREGISTERED_FORM_ELEMENT,
+  id
+});
+
+const updateValue = (id, value) => ({
+  type: FORM_ELEMENT_UPDATED,
+  id,
+  value
+});
+
+const setInvalid = invalid => ({
+  type: FORM_VALIDATION_RESULT,
+  invalid
+});
+
+const isFunction = x => typeof x === "function";
+
+const validateComponent = (comp, value) => {
+  let valid = true;
+  let rule = null;
+  let actualRule = null;
+
+  const { rules } = comp;
+
+  if (!rules || rules.length === 0) return { valid };
+
+  if (rules) {
+    for (let i = 0; i < rules.length; i += 1) {
+      rule = rules[i];
+
+      if (isFunction(rule)) {
+        actualRule = rule();
+      } else {
+        actualRule = rule;
+      }
+
+      if ((value === undefined || value === null) && !actualRule.handlesNull) {
+        break;
+      }
+
+      const result = !!actualRule.validate(value);
+      valid = !!result;
+
+      if (!valid) {
+        break;
+      }
+    }
+  }
+
+  const hint = !valid ? actualRule.hint : null;
+  let errorMessage = null;
+  if (hint) {
+    if (isFunction(hint)) {
+      errorMessage = hint(value);
+    } else {
+      errorMessage = hint;
+    }
+  }
+
+  return { valid, errorMessage };
+};
+
+
+const ValidatorProvider = props => {
+  const [{ components = [], invalid = {}, values = {} }, dispatch] = useReducer(
+    reducer,
+    { components: [], values: props.initialState || {} }
+  );
+
+  const ids = components.map(c => c.id);
+  const test = ids.filter((value, index, iteratee) =>
+    ids.includes(value, index + 1)
+  );
+  const { length } = test;
+
+  useEffect(
+    () => {
+      if (length > 0) {
+        test.forEach(fail => {
+          // eslint-disable-next-line no-console
+          console.warn(
+            `You have registered two instances with the same name (${fail})`
+          );
+          // eslint-disable-next-line no-console
+          console.warn(
+            "Please correct to avoid two fields being mapped to the same property"
+          );
+        });
+      }
+    },
+    [length, test]
+  );
+
+  const validate = () => {
+    const foundBroken = {};
+    let firstError;
+    components
+      .filter(c => c.rules && c.rules.length > 0)
+      .forEach(comp => {
+        const result = validateComponent(comp, values[comp.id]);
+        if (!result.valid) {
+          foundBroken[comp.id] = result;
+          if (!firstError) {
+            firstError = { ...result, id: comp.id };
+          }
+        }
+      });
+    dispatch(setInvalid(foundBroken));
+
+    return { valid: Object.keys(foundBroken).length === 0, firstError };
+  };
+
+  const contextValues = {
+    register: (id, rules) => dispatch(register(id, rules)),
+    unregister: id => dispatch(unregister(id)),
+    updateValue: (id, value) => dispatch(updateValue(id, value)),
+    validate,
+    invalid,
+    values,
+    components
+  };
+
+  return (
+    <context.Provider value={contextValues}>
+      {props.children}
+    </context.Provider>
+  );
+};
+
+const App = props => {
+  return (
+    <div>
+      <TextInput name="Email address" rules={[email, required]} />
+      <SubmitButton onClick={() => alert("success")}>Submit</SubmitButton>
+    </div>
+  );
+};
+
+const SubmitButton = props => {
+  const { validate, values } = useContext(context);
+
+  const validateData = () => {
+    const check = validate();
+    if (check.valid) {
+      props.onClick(values);
+    } else if (check.firstError && check.firstError.id) {
+      const elem = document.getElementById(check.firstError.id);
+      elem.scrollIntoView({ behavior: "smooth", block: "start" });
+      elem.focus();
+    }
+  };
+
+  return (
+    <button color={props.color} onClick={() => validateData()}>
+      {props.children}
+    </button>
+  );
+};
+
+const useRegister = props => {
+  const { register, unregister, updateValue, invalid, values } = useContext(
+    context
+  );
+
+  useEffect(
+    () => {
+      register(props.name, props.rules || []);
+      return function cleanup() {
+        unregister(props.name);
+      };
+    },
+    [props.name, props.rules, register, unregister]
+  );
+
+  return {
+    update: (val, id = props.name) => updateValue(id, val),
+    invalid: invalid[props.name],
+    value: values[props.name]
+  };
+};
+
+const TextInput = props => {
+  const { value, invalid, update } = useRegister(props);
+
+  return (
+    <div className="row">
+      <div lg={3}>{props.label}</div>
+        <input
+          id={props.name}
+          invalid={!!invalid}
+          type={props.type}
+          value={value || ""}
+          onChange={ev => update(ev.target.value)}
+        />
+        <div>{invalid ? invalid.errorMessage : null}</div>
+    </div>
+  );
+};
+
+TextInput.defaultProps = {
+  type: "text",
+  rules: []
+};
+
+
+
       ReactDOM.render(
-        <h1>Hello World!</h1>,
+        <RunApp />,
         document.getElementById('container')
       );
     </script>
