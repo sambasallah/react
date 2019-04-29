@@ -43,6 +43,9 @@ import {
   getCurrentFiberStackInDev,
   getStackByFiberInDevAndProd,
 } from './ReactCurrentFiber';
+import {
+  acceptsTypeWithHotReload,
+} from './ReactFiberHotReload';
 import {StrictMode} from './ReactTypeOfMode';
 
 let didWarnAboutMaps;
@@ -233,6 +236,15 @@ function warnOnFunctionType() {
   );
 }
 
+function acceptsType(fiber: Fiber, element: ReactElement): boolean {
+  if (__DEV__) {
+    if (acceptsTypeWithHotReload(fiber, element)) {
+      return true;
+    }
+  }
+  return fiber.elementType === element.type;
+}
+
 // This wrapper function exists because I expect to clone the code in each path
 // to be able to optimize each path individually by branching early. This needs
 // a compiler or we can do it manually. Helpers that don't need this branching
@@ -378,7 +390,7 @@ function ChildReconciler(shouldTrackSideEffects) {
     element: ReactElement,
     expirationTime: ExpirationTime,
   ): Fiber {
-    if (current !== null && current.elementType === element.type) {
+    if (current !== null && acceptsType(current, element)) {
       // Move based on index
       const existing = useFiber(current, element.props, expirationTime);
       existing.ref = coerceRef(returnFiber, current, element);
@@ -1121,7 +1133,7 @@ function ChildReconciler(shouldTrackSideEffects) {
         if (
           child.tag === Fragment
             ? element.type === REACT_FRAGMENT_TYPE
-            : child.elementType === element.type
+            : acceptsType(child, element)
         ) {
           deleteRemainingChildren(returnFiber, child.sibling);
           const existing = useFiber(

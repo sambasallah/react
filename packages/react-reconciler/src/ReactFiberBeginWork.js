@@ -70,6 +70,7 @@ import {
   getCurrentFiberStackInDev,
 } from './ReactCurrentFiber';
 import {startWorkTimer, cancelWorkTimer} from './ReactDebugFiberPerf';
+import {resolveTypeWithHotReload} from './ReactFiberHotReload';
 
 import {
   mountChildFibers,
@@ -2204,7 +2205,10 @@ function beginWork(
       );
     }
     case FunctionComponent: {
-      const Component = workInProgress.type;
+      let Component = workInProgress.type;
+      if (__DEV__) {
+        Component = resolveTypeWithHotReload(Component);
+      }
       const unresolvedProps = workInProgress.pendingProps;
       const resolvedProps =
         workInProgress.elementType === Component
