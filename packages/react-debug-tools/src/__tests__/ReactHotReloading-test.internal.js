@@ -141,14 +141,112 @@ describe('React hot reloading', () => {
     expect(newEl.textContent).toBe('0');
     expect(newEl.className).toBe('orange');
   });
+
+  it('updates from memo() to memo() with inner identity', () => {
+   const AppIdentity = React.createRef();
+
+    function AppV1() {
+      const [counter, setCounter] = React.useState(0);
+      function handleClick() {
+        setCounter(c => c + 1);
+      }
+      return <h1 className="blue" onClick={handleClick}>{counter}</h1>;
+    }
+    AppV1.__debugIdentity = AppIdentity;
+    AppIdentity.current = AppV1;
+    const MemoAppV1 = React.memo(AppV1);
+
+    // First render
+    ReactDOM.render(<MemoAppV1 prop="a" />, container);
+    const el = container.firstChild;
+    expect(el.textContent).toBe('0');
+    expect(el.className).toBe('blue');
+    el.dispatchEvent(new MouseEvent('click', {bubbles: true}));
+    expect(el.textContent).toBe('1');
+    expect(el.className).toBe('blue');
+
+    function AppV2() {
+      const [counter, setCounter] = React.useState(0);
+      function handleClick() {
+        setCounter(c => c + 1);
+      }
+      // Different color
+      return <h1 className="red" onClick={handleClick}>{counter}</h1>;
+    }
+    AppV2.__debugIdentity = AppIdentity;
+    // This is now the latest version.
+    AppIdentity.current = AppV2;
+    const MemoAppV2 = React.memo(AppV2);
+
+    // Render the new implementation.
+    // State and DOM should be preserved, but color should change.
+    // TODO: I shouldn't need to pass a different prop for invalidation.
+    ReactDOM.render(<MemoAppV2 prop="b" />, container);
+    expect(el).toBe(container.firstChild);
+    expect(el.textContent).toBe('1');
+    expect(el.className).toBe('red');
+    el.dispatchEvent(new MouseEvent('click', {bubbles: true}));
+    expect(el).toBe(container.firstChild);
+    expect(el.textContent).toBe('2');
+    expect(el.className).toBe('red');
+  });
+
+  it('updates from forwardRef() to forwardRef() with inner identity', () => {
+   const AppIdentity = React.createRef();
+
+    function AppV1(props, ref) {
+      const [counter, setCounter] = React.useState(0);
+      function handleClick() {
+        setCounter(c => c + 1);
+      }
+      return <h1 className="blue" onClick={handleClick}>{counter}</h1>;
+    }
+    AppV1.__debugIdentity = AppIdentity;
+    AppIdentity.current = AppV1;
+    const FwdApp1 = React.forwardRef(AppV1);
+
+    // First render
+    ReactDOM.render(<FwdApp1 />, container);
+    const el = container.firstChild;
+    expect(el.textContent).toBe('0');
+    expect(el.className).toBe('blue');
+    el.dispatchEvent(new MouseEvent('click', {bubbles: true}));
+    expect(el.textContent).toBe('1');
+    expect(el.className).toBe('blue');
+
+    function AppV2(props, ref) {
+      const [counter, setCounter] = React.useState(0);
+      function handleClick() {
+        setCounter(c => c + 1);
+      }
+      // Different color
+      return <h1 className="red" onClick={handleClick}>{counter}</h1>;
+    }
+    AppV2.__debugIdentity = AppIdentity;
+    // This is now the latest version.
+    AppIdentity.current = AppV2;
+    const FwdApp2 = React.forwardRef(AppV2);
+
+    // Render the new implementation.
+    // State and DOM should be preserved, but color should change.
+    ReactDOM.render(<FwdApp2 />, container);
+    expect(el).toBe(container.firstChild);
+    expect(el.textContent).toBe('1');
+    expect(el.className).toBe('red');
+    el.dispatchEvent(new MouseEvent('click', {bubbles: true}));
+    expect(el).toBe(container.firstChild);
+    expect(el.textContent).toBe('2');
+    expect(el.className).toBe('red');
+  });
 });
 
 /*
  TODO:
   + what about zombie renders? when parent keeps stale reference.
-    - fix memo/forwardRef combinations
-        - simple memo is special
-        - lazy?
+    + fix memo/forwardRef combinations
+    - lazy?
+      - also check what happens when we add/remove wrappers
+      - what if both inner and outer have identities
   - API to patch specific components
     - top-level re-render won't work for concrete deep updates
       - we also don't know which type is actually latest
