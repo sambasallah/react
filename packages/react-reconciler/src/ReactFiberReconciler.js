@@ -54,6 +54,7 @@ import {
   flushInteractiveUpdates,
   flushPassiveEffects,
 } from './ReactFiberScheduler';
+import {scheduleUpdateForHotReload} from './ReactFiberHotReload';
 import {createUpdate, enqueueUpdate} from './ReactUpdateQueue';
 import ReactFiberInstrumentation from './ReactFiberInstrumentation';
 import {
@@ -438,6 +439,7 @@ export function injectIntoDevTools(devToolsConfig: DevToolsConfig): boolean {
     overrideProps,
     setSuspenseHandler,
     scheduleUpdate,
+    scheduleUpdateForHotReload,
     currentDispatcherRef: ReactCurrentDispatcher,
     findHostInstanceByFiber(fiber: Fiber): Instance | TextInstance | null {
       const hostFiber = findCurrentHostFiber(fiber);
