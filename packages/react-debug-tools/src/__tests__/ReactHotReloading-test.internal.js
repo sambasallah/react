@@ -40,7 +40,9 @@ describe('React hot reloading', () => {
     container = null;
   });
 
-  fit('test', () => {
+  it('preserves states rendering different types with shared identity', () => {
+    const AppIdentity = React.createRef();
+
     function AppV1() {
       const [counter, setCounter] = React.useState(0);
       function handleClick() {
@@ -48,6 +50,17 @@ describe('React hot reloading', () => {
       }
       return <h1 className="blue" onClick={handleClick}>{counter}</h1>;
     }
+    AppV1.__debugIdentity = AppIdentity;
+    AppIdentity.current = AppV1;
+
+    // First render
+    ReactDOM.render(<AppV1 />, container);
+    const el = container.firstChild;
+    expect(el.textContent).toBe('0');
+    expect(el.className).toBe('blue');
+    el.dispatchEvent(new MouseEvent('click', {bubbles: true}));
+    expect(el.textContent).toBe('1');
+    expect(el.className).toBe('blue');
 
     function AppV2() {
       const [counter, setCounter] = React.useState(0);
@@ -57,33 +70,82 @@ describe('React hot reloading', () => {
       // Different color
       return <h1 className="red" onClick={handleClick}>{counter}</h1>;
     }
+    AppV2.__debugIdentity = AppIdentity;
+    // This is now the latest version.
+    AppIdentity.current = AppV2;
 
-    AppV1.__key = 'App'
-    AppV2.__key = 'App'
-
-    ReactDOM.render(<AppV1 />, container);
-    const el = container.firstChild;
-    expect(el.textContent).toBe('0');
-    expect(el.className).toBe('blue');
-
-    el.dispatchEvent(new MouseEvent('click', {bubbles: true}));
-    expect(el.textContent).toBe('1');
-    expect(el.className).toBe('blue');
-
-    // Hot reload
-    // TODO: actual API
+    // Render the new implementation.
+    // State and DOM should be preserved, but color should change.
     ReactDOM.render(<AppV2 />, container);
     expect(el).toBe(container.firstChild);
     expect(el.textContent).toBe('1');
     expect(el.className).toBe('red');
+    el.dispatchEvent(new MouseEvent('click', {bubbles: true}));
+    expect(el).toBe(container.firstChild);
+    expect(el.textContent).toBe('2');
+    expect(el.className).toBe('red');
 
-  })
+    // First type should still act as latest version.
+    // This is important to avoid "zombie" renders from old function instances.
+    ReactDOM.render(<AppV1 />, container);
+    expect(el).toBe(container.firstChild);
+    expect(el.textContent).toBe('2');
+    expect(el.className).toBe('red');
+    el.dispatchEvent(new MouseEvent('click', {bubbles: true}));
+    expect(el).toBe(container.firstChild);
+    expect(el.textContent).toBe('3');
+    expect(el.className).toBe('red');
+
+    function AppV3() {
+      const [counter, setCounter] = React.useState(0);
+      function handleClick() {
+        setCounter(c => c + 1);
+      }
+      // Different color
+      return <h1 className="green" onClick={handleClick}>{counter}</h1>;
+    }
+    AppV3.__debugIdentity = AppIdentity;
+    AppIdentity.current = AppV3;
+
+    // Check they're all equivalent.
+    ReactDOM.render(<AppV1 />, container);
+    expect(el).toBe(container.firstChild);
+    expect(el.textContent).toBe('3');
+    expect(el.className).toBe('green');
+    ReactDOM.render(<AppV3 />, container);
+    expect(el).toBe(container.firstChild);
+    expect(el.textContent).toBe('3');
+    expect(el.className).toBe('green');
+    ReactDOM.render(<AppV2 />, container);
+    expect(el).toBe(container.firstChild);
+    expect(el.textContent).toBe('3');
+    expect(el.className).toBe('green');
+    el.dispatchEvent(new MouseEvent('click', {bubbles: true}));
+    expect(el).toBe(container.firstChild);
+    expect(el.textContent).toBe('4');
+    expect(el.className).toBe('green');
+
+    // Check we don't preserve state when switching identities.
+    function SomethingElse() {
+      const [counter, setCounter] = React.useState(0);
+      function handleClick() {
+        setCounter(c => c + 1);
+      }
+      return <h1 className="orange" onClick={handleClick}>{counter}</h1>;
+    }
+    SomethingElse.__debugIdentity = React.createRef();
+    SomethingElse.__debugIdentity.current = SomethingElse;
+    ReactDOM.render(<SomethingElse />, container);
+    expect(el).not.toBe(container.firstChild);
+    const newEl = container.firstChild;
+    expect(newEl.textContent).toBe('0');
+    expect(newEl.className).toBe('orange');
+  });
 });
 
 /*
  TODO:
-  - what about zombie renders? when parent keeps stale reference.
-    - maybe treat it as lazy and have a weakmap<type, type>.
+  + what about zombie renders? when parent keeps stale reference.
     - fix memo/forwardRef combinations
         - simple memo is special
         - lazy?
