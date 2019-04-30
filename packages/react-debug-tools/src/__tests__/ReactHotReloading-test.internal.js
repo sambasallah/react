@@ -14,6 +14,8 @@ describe('React hot reloading', () => {
   let ReactDOM;
   let act;
   let container;
+  let scheduleUpdateForHotReload;
+  let lastCommittedRoot;
 
   beforeEach(() => {
     container = document.createElement('div');
@@ -21,10 +23,12 @@ describe('React hot reloading', () => {
 
     global.__REACT_DEVTOOLS_GLOBAL_HOOK__ = {
       inject: injected => {
-        // TODO
+        scheduleUpdateForHotReload = injected.scheduleUpdateForHotReload;
       },
       supportsFiber: true,
-      onCommitFiberRoot: () => {},
+      onCommitFiberRoot: (id, root) => {
+        lastCommittedRoot = root;
+      },
       onCommitFiberUnmount: () => {},
     };
 
@@ -38,6 +42,8 @@ describe('React hot reloading', () => {
   afterEach(() => {
     document.body.removeChild(container);
     container = null;
+    scheduleUpdateForHotReload = null;
+    lastCommittedRoot = null;
   });
 
   it('preserves states rendering different types with shared identity', () => {
@@ -75,8 +81,9 @@ describe('React hot reloading', () => {
     AppIdentity.current = AppV2;
 
     // Render the new implementation.
+    scheduleUpdateForHotReload(lastCommittedRoot, [AppIdentity]);
+
     // State and DOM should be preserved, but color should change.
-    ReactDOM.render(<AppV2 />, container);
     expect(el).toBe(container.firstChild);
     expect(el.textContent).toBe('1');
     expect(el.className).toBe('red');
@@ -85,6 +92,10 @@ describe('React hot reloading', () => {
     expect(el.textContent).toBe('2');
     expect(el.className).toBe('red');
 
+    ReactDOM.render(<AppV2 />, container);
+    expect(el).toBe(container.firstChild);
+    expect(el.textContent).toBe('2');
+    expect(el.className).toBe('red');
     // First type should still act as latest version.
     // This is important to avoid "zombie" renders from old function instances.
     ReactDOM.render(<AppV1 />, container);
@@ -106,6 +117,8 @@ describe('React hot reloading', () => {
     }
     AppV3.__debugIdentity = AppIdentity;
     AppIdentity.current = AppV3;
+
+    scheduleUpdateForHotReload(lastCommittedRoot, [AppIdentity]);
 
     // Check they're all equivalent.
     ReactDOM.render(<AppV1 />, container);
@@ -157,7 +170,7 @@ describe('React hot reloading', () => {
     const MemoAppV1 = React.memo(AppV1);
 
     // First render
-    ReactDOM.render(<MemoAppV1 prop="a" />, container);
+    ReactDOM.render(<MemoAppV1 />, container);
     const el = container.firstChild;
     expect(el.textContent).toBe('0');
     expect(el.className).toBe('blue');
@@ -179,13 +192,20 @@ describe('React hot reloading', () => {
     const MemoAppV2 = React.memo(AppV2);
 
     // Render the new implementation.
+    scheduleUpdateForHotReload(lastCommittedRoot, [AppIdentity]);
+
     // State and DOM should be preserved, but color should change.
-    // TODO: I shouldn't need to pass a different prop for invalidation.
-    ReactDOM.render(<MemoAppV2 prop="b" />, container);
     expect(el).toBe(container.firstChild);
     expect(el.textContent).toBe('1');
     expect(el.className).toBe('red');
     el.dispatchEvent(new MouseEvent('click', {bubbles: true}));
+    expect(el).toBe(container.firstChild);
+    expect(el.textContent).toBe('2');
+    expect(el.className).toBe('red');
+
+    // Check old type doesn't blow it away.
+    ReactDOM.render(<MemoAppV2 prop="b" />, container);
+    ReactDOM.render(<MemoAppV1 prop="a" />, container);
     expect(el).toBe(container.firstChild);
     expect(el.textContent).toBe('2');
     expect(el.className).toBe('red');
@@ -203,10 +223,10 @@ describe('React hot reloading', () => {
     }
     AppV1.__debugIdentity = AppIdentity;
     AppIdentity.current = AppV1;
-    const FwdApp1 = React.forwardRef(AppV1);
+    const FwdAppV1 = React.forwardRef(AppV1);
 
     // First render
-    ReactDOM.render(<FwdApp1 />, container);
+    ReactDOM.render(<FwdAppV1 />, container);
     const el = container.firstChild;
     expect(el.textContent).toBe('0');
     expect(el.className).toBe('blue');
@@ -225,15 +245,23 @@ describe('React hot reloading', () => {
     AppV2.__debugIdentity = AppIdentity;
     // This is now the latest version.
     AppIdentity.current = AppV2;
-    const FwdApp2 = React.forwardRef(AppV2);
+    const FwdAppV2 = React.forwardRef(AppV2);
 
     // Render the new implementation.
+    scheduleUpdateForHotReload(lastCommittedRoot, [AppIdentity]);
+
     // State and DOM should be preserved, but color should change.
-    ReactDOM.render(<FwdApp2 />, container);
     expect(el).toBe(container.firstChild);
     expect(el.textContent).toBe('1');
     expect(el.className).toBe('red');
     el.dispatchEvent(new MouseEvent('click', {bubbles: true}));
+    expect(el).toBe(container.firstChild);
+    expect(el.textContent).toBe('2');
+    expect(el.className).toBe('red');
+
+    // Check old type doesn't blow it away.
+    ReactDOM.render(<FwdAppV2 prop="b" />, container);
+    ReactDOM.render(<FwdAppV1 prop="a" />, container);
     expect(el).toBe(container.firstChild);
     expect(el.textContent).toBe('2');
     expect(el.className).toBe('red');
@@ -244,12 +272,13 @@ describe('React hot reloading', () => {
  TODO:
   + what about zombie renders? when parent keeps stale reference.
     + fix memo/forwardRef combinations
+      - non-simple memo
     - lazy?
       - also check what happens when we add/remove wrappers
       - what if both inner and outer have identities
-  - API to patch specific components
-    - top-level re-render won't work for concrete deep updates
-      - we also don't know which type is actually latest
+  x API to patch specific components
+    x top-level re-render won't work for concrete deep updates
+      x we also don't know which type is actually latest
     - resolveType?
       - think through what should happen with classes
         - that may help decide which fields to mutate etc

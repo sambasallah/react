@@ -11,6 +11,12 @@ import type {ReactElement} from 'shared/ReactElementType';
 import type {Fiber} from './ReactFiber';
 
 import {
+  batchedUpdates,
+  scheduleWork,
+  flushPassiveEffects
+} from './ReactFiberScheduler';
+import {Sync} from './ReactFiberExpirationTime';
+import {
   REACT_FORWARD_REF_TYPE,
   REACT_MEMO_TYPE,
 } from 'shared/ReactSymbols';
@@ -57,5 +63,60 @@ export function resolveTypeWithHotReload(type: Function): Function {
     return type;
   }
   return debugIdentity.current;
+}
+
+export function scheduleUpdateForHotReload(root, identities) {
+  flushPassiveEffects();
+  batchedUpdates(() => {
+    recursivelyScheduleUpdates(root.current, new Set(identities));
+  });
+}
+
+function unwrapHotReloadableType(type: mixed) {
+  switch (typeof type) {
+    case 'string':
+      return null;
+    case 'function':
+      if (type.prototype && type.prototype.isReactComponent) {
+        return null;
+      }
+      return type;
+    case 'object':
+      switch (type.$$typeof) {
+        case REACT_MEMO_TYPE:
+          return unwrapHotReloadableType(type.type);
+        case REACT_FORWARD_REF_TYPE:
+          return type.render;
+        default:
+          return null;
+      }
+    default:
+      return false;
+  }
+}
+
+let memoBuster = 0;
+
+function recursivelyScheduleUpdates(fiber, identitySet) {
+  if (fiber.type !== null) {
+    const unwrappedType = unwrapHotReloadableType(fiber.type);
+    if (unwrappedType !== null && unwrappedType.__debugIdentity !== undefined) {
+      if (identitySet.has(unwrappedType.__debugIdentity)) {
+        // Prevent bailout
+        fiber.memoizedProps = {
+          ...fiber.memoizedProps,
+          // TODO: this is not good
+          __hotReloadAttempt: memoBuster++
+        };
+        scheduleWork(fiber, Sync);
+      }
+    }
+  };
+  if (fiber.child !== null) {
+    recursivelyScheduleUpdates(fiber.child, identitySet);
+  }
+  if (fiber.sibling !== null) {
+    recursivelyScheduleUpdates(fiber.sibling, identitySet);
+  }
 }
 
