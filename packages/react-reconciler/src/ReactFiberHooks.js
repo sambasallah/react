@@ -36,6 +36,7 @@ import {
   warnIfNotCurrentlyActingUpdatesInDev,
   markRenderEventTime,
 } from './ReactFiberScheduler';
+import {resolveTypeWithHotReload} from './ReactFiberHotReload';
 
 import invariant from 'shared/invariant';
 import warning from 'shared/warning';
@@ -338,6 +339,10 @@ export function renderWithHooks(
   refOrContext: any,
   nextRenderExpirationTime: ExpirationTime,
 ): any {
+  if (__DEV__) {
+    Component = resolveTypeWithHotReload(Component);
+  }
+
   renderExpirationTime = nextRenderExpirationTime;
   currentlyRenderingFiber = workInProgress;
   nextCurrentHook = current !== null ? current.memoizedState : null;

@@ -44,7 +44,7 @@ import {
   getStackByFiberInDevAndProd,
 } from './ReactCurrentFiber';
 import {
-  acceptsTypeWithHotReload,
+  areCompatibleTypesForHotReload,
 } from './ReactFiberHotReload';
 import {StrictMode} from './ReactTypeOfMode';
 
@@ -238,7 +238,7 @@ function warnOnFunctionType() {
 
 function acceptsType(fiber: Fiber, element: ReactElement): boolean {
   if (__DEV__) {
-    if (acceptsTypeWithHotReload(fiber, element)) {
+    if (areCompatibleTypesForHotReload(fiber.elementType, element.type)) {
       return true;
     }
   }
