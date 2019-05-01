@@ -65,10 +65,11 @@ export function resolveTypeWithHotReload(type: Function): Function {
   return debugIdentity.current;
 }
 
-export function scheduleUpdateForHotReload(root, identities) {
+// TODO: unify in one API?
+export function scheduleUpdateForHotReload(root, updatedIdentities, invalidatedIdentities) {
   flushPassiveEffects();
   batchedUpdates(() => {
-    recursivelyScheduleUpdates(root.current, new Set(identities));
+    recursivelyScheduleUpdates(root.current, new Set(updatedIdentities), new Set(invalidatedIdentities));
   });
 }
 
@@ -97,11 +98,11 @@ function unwrapHotReloadableType(type: mixed) {
 
 let memoBuster = 0;
 
-function recursivelyScheduleUpdates(fiber, identitySet) {
+function recursivelyScheduleUpdates(fiber, updatedIdentities, invalidatedIdentities) {
   if (fiber.type !== null) {
     const unwrappedType = unwrapHotReloadableType(fiber.type);
     if (unwrappedType !== null && unwrappedType.__debugIdentity !== undefined) {
-      if (identitySet.has(unwrappedType.__debugIdentity)) {
+      if (updatedIdentities.has(unwrappedType.__debugIdentity)) {
         // Prevent bailout
         fiber.memoizedProps = {
           ...fiber.memoizedProps,
@@ -110,13 +111,27 @@ function recursivelyScheduleUpdates(fiber, identitySet) {
         };
         scheduleWork(fiber, Sync);
       }
+      if (invalidatedIdentities.has(unwrappedType.__debugIdentity)) {
+        fiber.elementType = 'DELETED';
+        if (fiber.alternate) {
+          fiber.alternate.elementType = 'DELETED';
+        }
+        // Force parent to re-render
+        // TODO: this doesn't work for roots and probably other things
+        fiber.return.memoizedProps = {
+          ...fiber.return.memoizedProps,
+          // TODO: this is not good
+          __hotReloadAttempt: memoBuster++
+        };
+        scheduleWork(fiber.return, Sync);
+      }
     }
   };
   if (fiber.child !== null) {
-    recursivelyScheduleUpdates(fiber.child, identitySet);
+    recursivelyScheduleUpdates(fiber.child, updatedIdentities, invalidatedIdentities);
   }
   if (fiber.sibling !== null) {
-    recursivelyScheduleUpdates(fiber.sibling, identitySet);
+    recursivelyScheduleUpdates(fiber.sibling, updatedIdentities, invalidatedIdentities);
   }
 }
 
