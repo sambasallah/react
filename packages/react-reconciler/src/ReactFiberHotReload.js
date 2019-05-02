@@ -20,6 +20,8 @@ import {Sync} from './ReactFiberExpirationTime';
 import {
   REACT_FORWARD_REF_TYPE,
   REACT_MEMO_TYPE,
+  REACT_CONTEXT_TYPE,
+  REACT_PROVIDER_TYPE,
 } from 'shared/ReactSymbols';
 import {DidCapture} from 'shared/ReactSideEffectTags';
 import {
@@ -55,6 +57,15 @@ export function areCompatibleTypesForHotReload(a: any, b: any): boolean {
           return areCompatibleTypesForHotReload(a.type, b.type);
         case REACT_FORWARD_REF_TYPE:
           return areCompatibleTypesForHotReload(a.render, b.render);
+        case REACT_CONTEXT_TYPE:
+        case REACT_PROVIDER_TYPE:
+          if (a._context !== undefined && b._context !== undefined) {
+            return areCompatibleTypesForHotReload(a._context, b._context);
+          }
+          return (
+            a.__debugIdentity !== undefined &&
+            a.__debugIdentity === b.__debugIdentity
+          );
         default:
           return false;
       }
