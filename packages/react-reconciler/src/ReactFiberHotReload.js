@@ -21,8 +21,10 @@ import {
   REACT_FORWARD_REF_TYPE,
   REACT_MEMO_TYPE,
 } from 'shared/ReactSymbols';
+import {DidCapture} from 'shared/ReactSideEffectTags';
 import {
   HostComponent,
+  ClassComponent,
 } from 'shared/ReactWorkTags';
 
 export function areCompatibleTypesForHotReload(a: any, b: any): boolean {
@@ -70,12 +72,31 @@ export function resolveTypeWithHotReload(type: Function): Function {
 }
 
 // TODO: unify in one API?
-export function scheduleUpdateForHotReload(root, updatedIdentities, invalidatedIdentities) {
+export function scheduleUpdateForHotReload(root, updatedIdentities, invalidatedIdentities, lastFailedBoundaries) {
   flushPassiveEffects();
   let affectedFibers = [];
+  let failedBoundaries = [];
   batchedUpdates(() => {
-    recursivelyScheduleUpdates(root.current, new Set(updatedIdentities), new Set(invalidatedIdentities), affectedFibers);
+    recursivelyScheduleUpdates(
+      root.current,
+      new Set(updatedIdentities),
+      new Set(invalidatedIdentities),
+      new Set(lastFailedBoundaries),
+      failedBoundaries,
+      affectedFibers
+    );
   });
+  
+  // Find failed boundaries.
+  let wip = root.current.alternate;
+  let fx = wip.firstEffect;
+  while (fx !== null) {
+    if ((fx.effectTag & DidCapture) === DidCapture && fx.tag === ClassComponent) {
+      failedBoundaries.push(fx);
+    }
+    fx = fx.nextEffect;
+  }
+
   let hostNodes = [];
   affectedFibers.forEach(f => {
     if (!isFiberMounted(f)) {
@@ -85,7 +106,8 @@ export function scheduleUpdateForHotReload(root, updatedIdentities, invalidatedI
     hostFibers.forEach(hf => hostNodes.push(hf.stateNode));
   })
   return {
-    hostNodes
+    hostNodes,
+    failedBoundaries
   };
 }
 
@@ -114,10 +136,35 @@ function unwrapHotReloadableType(type: mixed) {
 
 let memoBuster = 0;
 
-function recursivelyScheduleUpdates(fiber, updatedIdentities, invalidatedIdentities, affectedFibers) {
+function recursivelyScheduleUpdates(
+  fiber,
+  updatedIdentities,
+  invalidatedIdentities,
+  lastFailedBoundaries,
+  failedBoundaries,
+  affectedFibers
+  ) {
   if (fiber.type !== null) {
+    // Remount last failed boundaries.
+    if (lastFailedBoundaries.has(fiber) || (fiber.alternate !== null && lastFailedBoundaries.has(fiber.alternate))) {
+      fiber.elementType = 'DELETED';
+      if (fiber.alternate) {
+        fiber.alternate.elementType = 'DELETED';
+      }
+      // Force parent to re-render
+      // TODO: this doesn't work for roots and probably other things
+      fiber.return.memoizedProps = {
+        ...fiber.return.memoizedProps,
+        // TODO: this is not good
+        __hotReloadAttempt: memoBuster++
+      };
+      scheduleWork(fiber.return, Sync);
+      affectedFibers.push(fiber.return);
+    }
+
     const unwrappedType = unwrapHotReloadableType(fiber.type);
     if (unwrappedType !== null && unwrappedType.__debugIdentity !== undefined) {
+      // This Fiber was hot updated.
       if (updatedIdentities.has(unwrappedType.__debugIdentity)) {
         // Prevent bailout
         fiber.memoizedProps = {
@@ -128,6 +175,7 @@ function recursivelyScheduleUpdates(fiber, updatedIdentities, invalidatedIdentit
         scheduleWork(fiber, Sync);
         affectedFibers.push(fiber);
       }
+      // This Fiber was invalidated and needs to remount.
       if (invalidatedIdentities.has(unwrappedType.__debugIdentity)) {
         fiber.elementType = 'DELETED';
         if (fiber.alternate) {
@@ -146,10 +194,24 @@ function recursivelyScheduleUpdates(fiber, updatedIdentities, invalidatedIdentit
     }
   };
   if (fiber.child !== null) {
-    recursivelyScheduleUpdates(fiber.child, updatedIdentities, invalidatedIdentities, affectedFibers);
+    recursivelyScheduleUpdates(
+      fiber.child,
+      updatedIdentities,
+      invalidatedIdentities,
+      lastFailedBoundaries,
+      failedBoundaries,
+      affectedFibers
+    );
   }
   if (fiber.sibling !== null) {
-    recursivelyScheduleUpdates(fiber.sibling, updatedIdentities, invalidatedIdentities, affectedFibers);
+    recursivelyScheduleUpdates(
+      fiber.sibling,
+      updatedIdentities,
+      invalidatedIdentities,
+      lastFailedBoundaries,
+      failedBoundaries,
+      affectedFibers
+    );
   }
 }
 

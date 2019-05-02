@@ -405,6 +405,61 @@ describe('React hot reloading', () => {
       container.firstChild.firstChild.nextSibling.nextSibling,
     ]);
   });
+
+  it('detects triggered error boundaries', () => {
+    class Boundary extends React.Component {
+      state = {error: null};
+      componentDidCatch(error) {
+        this.setState({error});
+      }
+      render() {
+        if (this.state.error) {
+          return <h1>Oops: {this.state.error.message}</h1>
+        }
+        return this.props.children;
+      }
+    }
+
+    const AppIdentity = React.createRef();
+    function AppV1() {
+      return <h2>Hello</h2>;
+    }
+    AppV1.__debugIdentity = AppIdentity;
+    AppIdentity.current = AppV1;
+
+    // First render
+    ReactDOM.render(<Boundary><AppV1 /></Boundary>, container);
+    expect(container.textContent).toBe('Hello');
+
+    function AppV2() {
+      throw new Error('No.');
+    }
+    AppV2.__debugIdentity = AppIdentity;
+    AppIdentity.current = AppV2;
+
+    // Render the new implementation.
+    let failedBoundaries = scheduleUpdateForHotReload(lastCommittedRoot, [AppIdentity]).failedBoundaries;
+    expect(container.textContent).toBe('Oops: No.');
+    expect(failedBoundaries.length).toBe(1);
+
+    function AppV3() {
+      throw new Error('No again.');
+    }
+    AppV3.__debugIdentity = AppIdentity;
+    AppIdentity.current = AppV3;
+    failedBoundaries = scheduleUpdateForHotReload(lastCommittedRoot, [AppIdentity], [], failedBoundaries).failedBoundaries;
+    expect(container.textContent).toBe('Oops: No again.');
+    expect(failedBoundaries.length).toBe(1);
+
+    function AppV4() {
+      return <h1>Hi again</h1>;
+    }
+    AppV4.__debugIdentity = AppIdentity;
+    AppIdentity.current = AppV4;
+    failedBoundaries = scheduleUpdateForHotReload(lastCommittedRoot, [AppIdentity], [], failedBoundaries).failedBoundaries;
+    expect(container.textContent).toBe('Hi again');
+    expect(failedBoundaries.length).toBe(0);
+  });
 });
 
 /*
