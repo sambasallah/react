@@ -346,6 +346,65 @@ describe('React hot reloading', () => {
     expect(el.textContent).toBe('2');
     expect(el.className).toBe('red');
   });
+
+  it('returns the DOM nodes for updated components', () => {
+    const AppIdentity = React.createRef();
+    const CounterIdentity = React.createRef();
+
+    function AppV1() {
+      return (
+        <div>
+          <CounterV1 />
+          <h2>Hello</h2>
+          <CounterV1 />
+        </div>
+      )
+    }
+    AppV1.__debugIdentity = AppIdentity;
+    AppIdentity.current = AppV1;
+
+    function CounterV1() {
+      const [counter, setCounter] = React.useState(0);
+      function handleClick() {
+        setCounter(c => c + 1);
+      }
+      return (
+        <h1 className="blue" onClick={handleClick}>
+          <span>
+            {counter}
+          </span>
+        </h1>
+      );
+    }
+    CounterV1.__debugIdentity = CounterIdentity;
+    CounterIdentity.current = CounterV1;
+
+    // First render
+    ReactDOM.render(<AppV1 />, container);
+
+    function CounterV2() {
+      const [counter, setCounter] = React.useState(0);
+      function handleClick() {
+        setCounter(c => c + 1);
+      }
+      return (
+        <h1 className="blue" onClick={handleClick}>
+          <span>
+            {counter}
+          </span>
+        </h1>
+      );
+    }
+    CounterV2.__debugIdentity = CounterIdentity;
+    CounterIdentity.current = CounterV2;
+
+    // Render the new implementation.
+    const {hostNodes} = scheduleUpdateForHotReload(lastCommittedRoot, [CounterIdentity]);
+    expect(hostNodes).toEqual([
+      container.firstChild.firstChild,
+      container.firstChild.firstChild.nextSibling.nextSibling,
+    ]);
+  });
 });
 
 /*

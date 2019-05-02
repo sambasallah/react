@@ -10,6 +10,7 @@
 import type {ReactElement} from 'shared/ReactElementType';
 import type {Fiber} from './ReactFiber';
 
+import {findCurrentFiberUsingSlowPath, isFiberMounted} from './ReactFiberTreeReflection';
 import {
   batchedUpdates,
   scheduleWork,
@@ -20,6 +21,9 @@ import {
   REACT_FORWARD_REF_TYPE,
   REACT_MEMO_TYPE,
 } from 'shared/ReactSymbols';
+import {
+  HostComponent,
+} from 'shared/ReactWorkTags';
 
 export function areCompatibleTypesForHotReload(a: any, b: any): boolean {
   if (typeof a !== typeof b) {
@@ -68,9 +72,21 @@ export function resolveTypeWithHotReload(type: Function): Function {
 // TODO: unify in one API?
 export function scheduleUpdateForHotReload(root, updatedIdentities, invalidatedIdentities) {
   flushPassiveEffects();
+  let affectedFibers = [];
   batchedUpdates(() => {
-    recursivelyScheduleUpdates(root.current, new Set(updatedIdentities), new Set(invalidatedIdentities));
+    recursivelyScheduleUpdates(root.current, new Set(updatedIdentities), new Set(invalidatedIdentities), affectedFibers);
   });
+  let hostNodes = [];
+  affectedFibers.forEach(f => {
+    if (!isFiberMounted(f)) {
+      return;
+    }
+    const hostFibers = findAllCurrentHostFibers(f);
+    hostFibers.forEach(hf => hostNodes.push(hf.stateNode));
+  })
+  return {
+    hostNodes
+  };
 }
 
 function unwrapHotReloadableType(type: mixed) {
@@ -98,7 +114,7 @@ function unwrapHotReloadableType(type: mixed) {
 
 let memoBuster = 0;
 
-function recursivelyScheduleUpdates(fiber, updatedIdentities, invalidatedIdentities) {
+function recursivelyScheduleUpdates(fiber, updatedIdentities, invalidatedIdentities, affectedFibers) {
   if (fiber.type !== null) {
     const unwrappedType = unwrapHotReloadableType(fiber.type);
     if (unwrappedType !== null && unwrappedType.__debugIdentity !== undefined) {
@@ -110,6 +126,7 @@ function recursivelyScheduleUpdates(fiber, updatedIdentities, invalidatedIdentit
           __hotReloadAttempt: memoBuster++
         };
         scheduleWork(fiber, Sync);
+        affectedFibers.push(fiber);
       }
       if (invalidatedIdentities.has(unwrappedType.__debugIdentity)) {
         fiber.elementType = 'DELETED';
@@ -124,14 +141,45 @@ function recursivelyScheduleUpdates(fiber, updatedIdentities, invalidatedIdentit
           __hotReloadAttempt: memoBuster++
         };
         scheduleWork(fiber.return, Sync);
+        affectedFibers.push(fiber.return);
       }
     }
   };
   if (fiber.child !== null) {
-    recursivelyScheduleUpdates(fiber.child, updatedIdentities, invalidatedIdentities);
+    recursivelyScheduleUpdates(fiber.child, updatedIdentities, invalidatedIdentities, affectedFibers);
   }
   if (fiber.sibling !== null) {
-    recursivelyScheduleUpdates(fiber.sibling, updatedIdentities, invalidatedIdentities);
+    recursivelyScheduleUpdates(fiber.sibling, updatedIdentities, invalidatedIdentities, affectedFibers);
   }
 }
 
+function findAllCurrentHostFibers(parent: Fiber): Array<Fiber> {
+  const fibers = [];
+  const currentParent = findCurrentFiberUsingSlowPath(parent);
+  if (!currentParent) {
+    return fibers;
+  }
+
+  let node: Fiber = currentParent;
+  while (true) {
+    if (node.tag === HostComponent) {
+      fibers.push(node);
+    } else if (node.child) {
+      node.child.return = node;
+      node = node.child;
+      continue;
+    }
+    if (node === currentParent) {
+      return fibers;
+    }
+    while (!node.sibling) {
+      if (!node.return || node.return === currentParent) {
+        return fibers;
+      }
+      node = node.return;
+    }
+    node.sibling.return = node.return;
+    node = node.sibling;
+  }
+  return fibers;
+}
