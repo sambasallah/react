@@ -185,6 +185,10 @@ function recursivelyScheduleUpdates(
         };
         scheduleWork(fiber, Sync);
         affectedFibers.push(fiber);
+        invalidateMemo(fiber);
+        if (fiber.alternate !== null) {
+          invalidateMemo(fiber.alternate);
+        }
       }
       // This Fiber was invalidated and needs to remount.
       if (invalidatedIdentities.has(unwrappedType.__debugIdentity)) {
@@ -223,6 +227,32 @@ function recursivelyScheduleUpdates(
       failedBoundaries,
       affectedFibers
     );
+  }
+}
+
+function invalidateMemo(fiber: Fiber): void {
+  const state = fiber.memoizedState;
+  if (state === null) {
+    return;
+  }
+  // TODO: proper check for tags.
+  if (state.next === undefined) {
+    return;
+  }
+  let hook = state;
+  let anObjectHasNoName = {};
+  while (hook !== null) {
+    // TODO: proper check for hook type
+    if (Array.isArray(hook.memoizedState)) {
+      const deps = hook.memoizedState[1];
+      if (Array.isArray(deps)) {
+        for (let i = 0; i < deps.length; i++) {
+          // Invalidate.
+          deps[i] = anObjectHasNoName;
+        }
+      }
+    }
+    hook = hook.next;
   }
 }
 

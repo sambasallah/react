@@ -461,6 +461,7 @@ describe('React hot reloading', () => {
     expect(failedBoundaries.length).toBe(0);
   });
 
+  // TODO: this is dubious
   it('preserves context with shared identity', () => {
     const ParentIdentity = React.createRef();
     const ChildIdentity = React.createRef();
@@ -545,6 +546,48 @@ describe('React hot reloading', () => {
     expect(el.firstChild.className).toBe('red');
   });
 
+  it('invalidates useMemo results', () => {
+    const AppIdentity = React.createRef();
+
+    function AppV1() {
+      const [counter, setCounter] = React.useState(0);
+      function handleClick() {
+        setCounter(c => c + 1);
+      }
+      const transformed = React.useMemo(() => counter * 2, [counter]);
+      return <h1 className="blue" onClick={handleClick}>{transformed}</h1>;
+    }
+    AppV1.__debugIdentity = AppIdentity;
+    AppIdentity.current = AppV1;
+
+    ReactDOM.render(<AppV1 />, container);
+    const el = container.firstChild;
+    expect(el.textContent).toBe('0');
+    expect(el.className).toBe('blue');
+    el.dispatchEvent(new MouseEvent('click', {bubbles: true}));
+    expect(el.textContent).toBe('2');
+    expect(el.className).toBe('blue');
+
+    function AppV2() {
+      const [counter, setCounter] = React.useState(0);
+      function handleClick() {
+        setCounter(c => c + 1);
+      }
+      const transformed = React.useMemo(() => counter * 10, [counter]);
+      return <h1 className="red" onClick={handleClick}>{transformed}</h1>;
+    }
+    AppV2.__debugIdentity = AppIdentity;
+    AppIdentity.current = AppV2;
+
+    scheduleUpdateForHotReload(lastCommittedRoot, [AppIdentity]);
+    expect(el).toBe(container.firstChild);
+    expect(el.textContent).toBe('10');
+    expect(el.className).toBe('red');
+    el.dispatchEvent(new MouseEvent('click', {bubbles: true}));
+    expect(el).toBe(container.firstChild);
+    expect(el.textContent).toBe('20');
+    expect(el.className).toBe('red');
+  });
 });
 
 /*
