@@ -36,7 +36,7 @@ describe('React hot reloading', () => {
 
     React = require('react');
     ReactDOM = require('react-dom');
-    act = ReactDOM.act;
+    act = require('react-dom/test-utils').act;
   });
 
   afterEach(() => {
@@ -586,6 +586,44 @@ describe('React hot reloading', () => {
     el.dispatchEvent(new MouseEvent('click', {bubbles: true}));
     expect(el).toBe(container.firstChild);
     expect(el.textContent).toBe('20');
+    expect(el.className).toBe('red');
+  });
+
+  it('invalidates useEffect', () => {
+    const AppIdentity = React.createRef();
+
+    function AppV1() {
+      const [counter, setCounter] = React.useState(0);
+      React.useEffect(() => {
+        setCounter(c => c + 1);
+      }, []);
+      return <h1 className="blue">{counter}</h1>;
+    }
+    AppV1.__debugIdentity = AppIdentity;
+    AppIdentity.current = AppV1;
+
+    act(() => {
+      ReactDOM.render(<AppV1 />, container);      
+    });
+    const el = container.firstChild;
+    expect(el.textContent).toBe('1');
+    expect(el.className).toBe('blue');
+
+    function AppV2() {
+      const [counter, setCounter] = React.useState(0);
+      React.useEffect(() => {
+        setCounter(c => c + 5);
+      }, []);
+      return <h1 className="red">{counter}</h1>;
+    }
+    AppV2.__debugIdentity = AppIdentity;
+    AppIdentity.current = AppV2;
+
+    act(() => {
+      scheduleUpdateForHotReload(lastCommittedRoot, [AppIdentity]);
+    });
+    expect(el).toBe(container.firstChild);
+    expect(el.textContent).toBe('6');
     expect(el.className).toBe('red');
   });
 });

@@ -307,6 +307,10 @@ function areHookInputsEqual(
   }
 
   if (__DEV__) {
+    if (prevDeps.invalidated) {
+      return false;
+    }
+
     // Don't bother comparing lengths in prod because these arrays should be
     // passed inline.
     if (nextDeps.length !== prevDeps.length) {

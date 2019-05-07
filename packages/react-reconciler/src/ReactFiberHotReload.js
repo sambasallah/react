@@ -185,9 +185,9 @@ function recursivelyScheduleUpdates(
         };
         scheduleWork(fiber, Sync);
         affectedFibers.push(fiber);
-        invalidateMemo(fiber);
+        invalidateHooks(fiber);
         if (fiber.alternate !== null) {
-          invalidateMemo(fiber.alternate);
+          invalidateHooks(fiber.alternate);
         }
       }
       // This Fiber was invalidated and needs to remount.
@@ -230,7 +230,7 @@ function recursivelyScheduleUpdates(
   }
 }
 
-function invalidateMemo(fiber: Fiber): void {
+function invalidateHooks(fiber: Fiber): void {
   const state = fiber.memoizedState;
   if (state === null) {
     return;
@@ -239,17 +239,21 @@ function invalidateMemo(fiber: Fiber): void {
   if (state.next === undefined) {
     return;
   }
+
   let hook = state;
   let anObjectHasNoName = {};
   while (hook !== null) {
-    // TODO: proper check for hook type
-    if (Array.isArray(hook.memoizedState)) {
-      const deps = hook.memoizedState[1];
-      if (Array.isArray(deps)) {
-        for (let i = 0; i < deps.length; i++) {
-          // Invalidate.
-          deps[i] = anObjectHasNoName;
-        }
+    let deps = null;
+    // TODO: proper check for hook type.
+    // Currently it incorrectly can flag useReducer/useState.
+    if (hook.memoizedState !== null && hook.memoizedState !== undefined) {
+      if (Array.isArray(hook.memoizedState) && Array.isArray(hook.memoizedState[1])) {
+        deps = hook.memoizedState[1];
+      } else if (hook.memoizedState.deps) {
+        deps = hook.memoizedState.deps;
+      }
+      if (deps !== null) {
+        deps.invalidated = true; // TODO: less gross
       }
     }
     hook = hook.next;
