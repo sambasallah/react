@@ -82,31 +82,23 @@ export function resolveTypeWithHotReload(type: Function): Function {
   return debugIdentity.current;
 }
 
+let failedBoundaries = new WeakSet();
+export function markFailedBoundaryForHotReload(fiber: Fiber): void {
+  failedBoundaries.add(fiber);
+}
+
 // TODO: unify in one API?
-export function scheduleUpdateForHotReload(root, updatedIdentities, invalidatedIdentities, lastFailedBoundaries) {
+export function scheduleUpdateForHotReload(root, updatedIdentities, invalidatedIdentities) {
   flushPassiveEffects();
   let affectedFibers = [];
-  let failedBoundaries = [];
   batchedUpdates(() => {
     recursivelyScheduleUpdates(
       root.current,
       new Set(updatedIdentities),
       new Set(invalidatedIdentities),
-      new Set(lastFailedBoundaries),
-      failedBoundaries,
       affectedFibers
     );
   });
-  
-  // Find failed boundaries.
-  let wip = root.current.alternate;
-  let fx = wip.firstEffect;
-  while (fx !== null) {
-    if ((fx.effectTag & DidCapture) === DidCapture && fx.tag === ClassComponent) {
-      failedBoundaries.push(fx);
-    }
-    fx = fx.nextEffect;
-  }
 
   let hostNodes = [];
   affectedFibers.forEach(f => {
@@ -118,7 +110,6 @@ export function scheduleUpdateForHotReload(root, updatedIdentities, invalidatedI
   })
   return {
     hostNodes,
-    failedBoundaries
   };
 }
 
@@ -151,13 +142,11 @@ function recursivelyScheduleUpdates(
   fiber,
   updatedIdentities,
   invalidatedIdentities,
-  lastFailedBoundaries,
-  failedBoundaries,
   affectedFibers
   ) {
   if (fiber.type !== null) {
-    // Remount last failed boundaries.
-    if (lastFailedBoundaries.has(fiber) || (fiber.alternate !== null && lastFailedBoundaries.has(fiber.alternate))) {
+    // Remount all failed boundaries.
+    if (failedBoundaries.has(fiber) || (fiber.alternate !== null && failedBoundaries.has(fiber.alternate))) {
       fiber.elementType = 'DELETED';
       if (fiber.alternate) {
         fiber.alternate.elementType = 'DELETED';
@@ -213,8 +202,6 @@ function recursivelyScheduleUpdates(
       fiber.child,
       updatedIdentities,
       invalidatedIdentities,
-      lastFailedBoundaries,
-      failedBoundaries,
       affectedFibers
     );
   }
@@ -223,8 +210,6 @@ function recursivelyScheduleUpdates(
       fiber.sibling,
       updatedIdentities,
       invalidatedIdentities,
-      lastFailedBoundaries,
-      failedBoundaries,
       affectedFibers
     );
   }

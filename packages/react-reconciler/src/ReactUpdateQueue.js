@@ -102,6 +102,8 @@ import {
 
 import {StrictMode} from './ReactTypeOfMode';
 import {markRenderEventTime} from './ReactFiberScheduler';
+import {completeWork} from './ReactFiberCompleteWork';
+import {markFailedBoundaryForHotReload} from './ReactFiberHotReload';
 
 import invariant from 'shared/invariant';
 import warningWithoutStack from 'shared/warningWithoutStack';
@@ -372,6 +374,9 @@ function getStateFromUpdate<State>(
       return payload;
     }
     case CaptureUpdate: {
+      if (__DEV__) {
+        markFailedBoundaryForHotReload(workInProgress);
+      }
       workInProgress.effectTag =
         (workInProgress.effectTag & ~ShouldCapture) | DidCapture;
     }
