@@ -26,7 +26,6 @@ type ContextDependency<T> = {
 import warningWithoutStack from 'shared/warningWithoutStack';
 import {isPrimaryRenderer} from './ReactFiberHostConfig';
 import {createCursor, push, pop} from './ReactFiberStack';
-import {resolveTypeWithHotReload} from './ReactFiberHotReload';
 import MAX_SIGNED_31_BIT_INT from './maxSigned31BitInt';
 import {
   ContextProvider,
@@ -84,10 +83,7 @@ export function exitDisallowedContextReadInDEV(): void {
 }
 
 export function pushProvider<T>(providerFiber: Fiber, nextValue: T): void {
-  let context: ReactContext<T> = providerFiber.type._context;
-  if (__DEV__) {
-    context = resolveTypeWithHotReload(context);
-  }
+  const context: ReactContext<T> = providerFiber.type._context;
 
   if (isPrimaryRenderer) {
     push(valueCursor, context._currentValue, providerFiber);
@@ -125,10 +121,7 @@ export function popProvider(providerFiber: Fiber): void {
 
   pop(valueCursor, providerFiber);
 
-  let context: ReactContext<any> = providerFiber.type._context;
-  if (__DEV__) {
-    context = resolveTypeWithHotReload(context);
-  }
+  const context: ReactContext<any> = providerFiber.type._context;
   if (isPrimaryRenderer) {
     context._currentValue = currentValue;
   } else {
@@ -141,9 +134,6 @@ export function calculateChangedBits<T>(
   newValue: T,
   oldValue: T,
 ) {
-  if (__DEV__) {
-    context = resolveTypeWithHotReload(context);
-  }
   if (is(oldValue, newValue)) {
     // No change
     return 0;
@@ -202,9 +192,6 @@ export function propagateContextChange(
   changedBits: number,
   renderExpirationTime: ExpirationTime,
 ): void {
-  if (__DEV__) {
-    context = resolveTypeWithHotReload(context);
-  }
   let fiber = workInProgress.child;
   if (fiber !== null) {
     // Set the return pointer of the child to the work-in-progress fiber.
@@ -221,12 +208,8 @@ export function propagateContextChange(
       let dependency = list.first;
       while (dependency !== null) {
         // Check if the context matches.
-        let depContext = dependency.context;
-        if (__DEV__) {
-          depContext = resolveTypeWithHotReload(depContext);
-        }
         if (
-          depContext === context &&
+          dependency.context === context &&
           (dependency.observedBits & changedBits) !== 0
         ) {
           // Match! Schedule an update on this fiber.
@@ -350,10 +333,6 @@ export function readContext<T>(
   observedBits: void | number | boolean,
 ): T {
   if (__DEV__) {
-    context = resolveTypeWithHotReload(context);
-  }
-
-  if (__DEV__) {
     // This warning would fire if you read context inside a Hook like useMemo.
     // Unlike the class check below, it's not enforced in production for perf.
     warning(
@@ -363,12 +342,6 @@ export function readContext<T>(
         'In function components, you can read it directly in the function body, but not ' +
         'inside Hooks like useReducer() or useMemo().',
     );
-  }
-
-  if (__DEV__) {
-    if (lastContextWithAllBitsObserved !== null) {
-      lastContextWithAllBitsObserved = resolveTypeWithHotReload(lastContextWithAllBitsObserved);
-    }
   }
 
   if (lastContextWithAllBitsObserved === context) {
