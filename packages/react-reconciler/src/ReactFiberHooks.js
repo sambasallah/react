@@ -185,6 +185,11 @@ let currentHookNameInDev: ?HookType = null;
 let hookTypesDev: Array<HookType> | null = null;
 let hookTypesUpdateIndexDev: number = -1;
 
+// In DEV, this tracks whether currently rendering component needs to ignore
+// the dependencies for Hooks that need them (e.g. useEffect or useMemo).
+// When true, such Hooks will always be "remounted". Only used during hot reload.
+let ignorePreviousDependencies: boolean = false;
+
 function mountHookTypesDev() {
   if (__DEV__) {
     const hookName = ((currentHookNameInDev: any): HookType);
@@ -292,6 +297,13 @@ function areHookInputsEqual(
   nextDeps: Array<mixed>,
   prevDeps: Array<mixed> | null,
 ) {
+  if (__DEV__) {
+    if (ignorePreviousDependencies) {
+      // Only true when this component is being hot reloaded.
+      return false;
+    }
+  }
+
   if (prevDeps === null) {
     if (__DEV__) {
       warning(
@@ -348,6 +360,9 @@ export function renderWithHooks(
         ? ((current._debugHookTypes: any): Array<HookType>)
         : null;
     hookTypesUpdateIndexDev = -1;
+    // Used for hot reloading:
+    ignorePreviousDependencies =
+      current !== null && current.type !== workInProgress.type;
   }
 
   // The following should have already been reset

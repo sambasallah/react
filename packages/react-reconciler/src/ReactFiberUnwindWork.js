@@ -55,6 +55,7 @@ import {
 import {logError} from './ReactFiberCommitWork';
 import {getStackByFiberInDevAndProd} from './ReactCurrentFiber';
 import {popHostContainer, popHostContext} from './ReactFiberHostContext';
+import {markFailedErrorBoundaryForHotReloading} from './ReactFiberHotReloading';
 import {
   isContextProvider as isLegacyContextProvider,
   popContext as popLegacyContext,
@@ -114,6 +115,9 @@ function createClassErrorUpdate(
   const inst = fiber.stateNode;
   if (inst !== null && typeof inst.componentDidCatch === 'function') {
     update.callback = function callback() {
+      if (__DEV__) {
+        markFailedErrorBoundaryForHotReloading(fiber);
+      }
       if (typeof getDerivedStateFromError !== 'function') {
         // To preserve the preexisting retry behavior of error boundaries,
         // we keep track of which ones already failed during this batch.
@@ -141,6 +145,10 @@ function createClassErrorUpdate(
           );
         }
       }
+    };
+  } else if (__DEV__) {
+    update.callback = () => {
+      markFailedErrorBoundaryForHotReloading(fiber);
     };
   }
   return update;
