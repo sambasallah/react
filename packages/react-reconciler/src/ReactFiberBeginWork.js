@@ -1018,9 +1018,6 @@ function mountLazyComponent(
   // Cancel and resume right after we know the tag.
   cancelWorkTimer(workInProgress);
   let Component = readLazyComponentType(elementType);
-  if (__DEV__) {
-    // TODO: resolve type for hot reloading.
-  }
   // Store the unwrapped component in the type.
   workInProgress.type = Component;
   const resolvedTag = (workInProgress.tag = resolveLazyComponentTag(Component));
@@ -1031,6 +1028,9 @@ function mountLazyComponent(
     case FunctionComponent: {
       if (__DEV__) {
         validateFunctionComponentInDev(workInProgress, Component);
+        workInProgress.type = Component = resolveFunctionForHotReloading(
+          Component,
+        );
       }
       child = updateFunctionComponent(
         null,
@@ -1052,6 +1052,11 @@ function mountLazyComponent(
       break;
     }
     case ForwardRef: {
+      if (__DEV__) {
+        workInProgress.type = Component = resolveFunctionForHotReloading(
+          Component,
+        );
+      }
       child = updateForwardRef(
         null,
         workInProgress,
