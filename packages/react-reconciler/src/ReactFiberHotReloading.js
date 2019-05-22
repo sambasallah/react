@@ -42,6 +42,27 @@ export type HotUpdate = {|
 let familiesByType: WeakMap<any, Family> | null = null;
 // $FlowFixMe Flow gets confused by a WeakSet feature check below.
 let failedBoundaries: WeakSet<Fiber> | null = null;
+let hostNodesForVisualFeedback: Set<Instance> | null = null;
+
+export function markInstanceForHotReloadingFeedback(instance: Instance): void {
+  if (__DEV__) {
+    if (hostNodesForVisualFeedback !== null) {
+      hostNodesForVisualFeedback.add(instance);
+    }
+  }
+}
+
+export function replaceInstanceForHotReloadingFeedback(instance: Instance, newInstance: Instance) {
+  if (__DEV__) {
+    if (hostNodesForVisualFeedback !== null) {
+      if (hostNodesForVisualFeedback.has(instance)) {
+        console.log('loool')
+        hostNodesForVisualFeedback.delete(instance);
+        hostNodesForVisualFeedback.add(newInstance);
+      }
+    }    
+  }
+}
 
 export function resolveFunctionForHotReloading(type: any): any {
   if (__DEV__) {
@@ -197,15 +218,24 @@ export function scheduleHotUpdate(root: FiberRoot, hotUpdate: HotUpdate): void {
     // TODO: warn if its identity changes over time?
     familiesByType = hotUpdate.familiesByType;
 
-    const {staleFamilies, updatedFamilies} = hotUpdate;
-    flushPassiveEffects();
-    flushSync(() => {
-      scheduleFibersWithFamiliesRecursively(
-        root.current,
-        updatedFamilies,
-        staleFamilies,
-      );
-    });
+    hostNodesForVisualFeedback = new Set();
+    try {
+      const {staleFamilies, updatedFamilies} = hotUpdate;
+      flushPassiveEffects();
+      flushSync(() => {
+        scheduleFibersWithFamiliesRecursively(
+          root.current,
+          updatedFamilies,
+          staleFamilies,
+        );
+      });
+      return {
+        hostNodesForVisualFeedback: Array.from(hostNodesForVisualFeedback),
+      };
+    } finally {
+      hostNodesForVisualFeedback = null;
+    }
+
   }
 }
 

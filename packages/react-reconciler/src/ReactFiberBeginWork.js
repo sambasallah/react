@@ -48,6 +48,7 @@ import {
   Update,
   Ref,
   Deletion,
+  HotReloadingFeedback,
 } from 'shared/ReactSideEffectTags';
 import ReactSharedInternals from 'shared/ReactSharedInternals';
 import {
@@ -2193,7 +2194,7 @@ function beginWork(
   if (__DEV__) {
     if (workInProgress._debugNeedsRemount && current !== null) {
       // This will restart the begin phase with a new fiber.
-      return remountFiber(
+      const newWorkInProgress = remountFiber(
         current,
         workInProgress,
         createFiberFromTypeAndProps(
@@ -2205,6 +2206,8 @@ function beginWork(
           workInProgress.expirationTime,
         ),
       );
+      newWorkInProgress.effectTag |= HotReloadingFeedback;
+      return newWorkInProgress;
     }
   }
 
@@ -2212,11 +2215,18 @@ function beginWork(
     const oldProps = current.memoizedProps;
     const newProps = workInProgress.pendingProps;
 
+    let isChangingTypeDueToHotReloading = false;
+    if (__DEV__) {
+      if (workInProgress.type !== current.type) {
+        isChangingTypeDueToHotReloading = true;
+        workInProgress.effectTag |= HotReloadingFeedback;
+      }
+    }
+
     if (
       oldProps !== newProps ||
       hasLegacyContextChanged() ||
-      // Force a re-render if the implementation changed due to hot reload:
-      (__DEV__ ? workInProgress.type !== current.type : false)
+      isChangingTypeDueToHotReloading
     ) {
       // If props or context changed, mark the fiber as having performed work.
       // This may be unset if the props are determined to be equal later (memo).

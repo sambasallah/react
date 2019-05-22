@@ -21,6 +21,7 @@ let lastRoot;
 describe('ReactFresh', () => {
   let container;
   let scheduleHotUpdate;
+  let hostNodesForVisualFeedback = [];
 
   beforeEach(() => {
     global.__REACT_DEVTOOLS_GLOBAL_HOOK__ = {
@@ -41,11 +42,13 @@ describe('ReactFresh', () => {
     Scheduler = require('scheduler');
     act = require('react-dom/test-utils').act;
     container = document.createElement('div');
+    container.className = 'container';
     document.body.appendChild(container);
   });
 
   afterEach(() => {
     document.body.removeChild(container);
+    hostNodesForVisualFeedback = [];
   });
 
   function prepare(version) {
@@ -64,7 +67,7 @@ describe('ReactFresh', () => {
   function patch(version) {
     const Component = version();
     const hotUpdate = ReactFreshRuntime.prepareUpdate();
-    scheduleHotUpdate(lastRoot, hotUpdate);
+    hostNodesForVisualFeedback = scheduleHotUpdate(lastRoot, hotUpdate).hostNodesForVisualFeedback;
     return Component;
   }
 
@@ -2706,6 +2709,202 @@ describe('ReactFresh', () => {
       });
       expect(container.firstChild.nextSibling).toBe(helloNode);
       expect(helloNode.textContent).toBe('Nice.');
+    }
+  });
+
+  fit('provides visual feedback by returning related host nodes', () => {
+    if (__DEV__) {
+      let ParentV1;
+      render(() => {
+        function Child({children}) {
+          return <div className="Child">{children}</div>;
+        }
+        __register__(Child, 'Child');
+
+        function Parent({children}) {
+          return (
+            <div className="Parent">
+              <div>
+                <Child />
+              </div>
+              <div>
+                <Child />
+              </div>
+            </div>
+          );
+        }
+        __register__(Parent, 'Parent');
+        ParentV1 = Parent;
+
+        function App() {
+          return (
+            <div className="App">
+              <Parent />
+              <Parent />
+            </div>
+          );
+        }
+        __register__(App, 'App');
+
+        return App;
+      });
+
+      // First, edit Child alone.
+      // This should flash only the four Child nodes.
+      patch(() => {
+        function Child({children}) {
+          return <div className="Child">{children}</div>;
+        }
+        __register__(Child, 'Child');
+      });
+      expect(hostNodesForVisualFeedback.map(node => node.className)).toEqual([
+        'Child',
+        'Child',
+        'Child',
+        'Child',
+      ]);
+    }
+  })
+
+  fit('uses closest parent nodes for visual feedback when there is no children', () => {
+    if (__DEV__) {
+      render(() => {
+        function Child({children}) {
+          return <div className="Child">{children}</div>;
+        }
+        __register__(Child, 'Child');
+
+        function Parent({children}) {
+          return (
+            <div className="Parent">
+              <div className="Parent-childWrapper">
+                <Child />
+              </div>
+              <div className="Parent-childWrapper">
+                <Child />
+              </div>
+            </div>
+          );
+        }
+        __register__(Parent, 'Parent');
+
+        function App() {
+          return (
+            <div className="App">
+              <Parent />
+              <Parent />
+            </div>
+          );
+        }
+        __register__(App, 'App');
+
+        return App;
+      });
+
+      // Child doesn't have its own host node anymore,
+      // so we expect to find closest parent host node instead.
+      patch(() => {
+        function Child({children}) {
+          return null;
+        }
+        __register__(Child, 'Child');
+      });
+      expect(hostNodesForVisualFeedback.map(node => node.className)).toEqual([
+        'Parent-childWrapper',
+        'Parent-childWrapper',
+        'Parent-childWrapper',
+        'Parent-childWrapper',
+      ]);
+
+      // Now Child will have more than one child node.
+      // Expect to find them all.
+      patch(() => {
+        function Child({children}) {
+          return (
+            <React.Fragment>
+              <p className="Child-p1" />
+              <p className="Child-p2" />
+            </React.Fragment>
+          );
+        }
+        __register__(Child, 'Child');
+      });
+      expect(hostNodesForVisualFeedback.map(node => node.className)).toEqual([
+        'Child-p1',
+        'Child-p2',
+        'Child-p1',
+        'Child-p2',
+        'Child-p1',
+        'Child-p2',
+        'Child-p1',
+        'Child-p2',
+      ]);
+
+      // We should find the root host node if there's nothing else above.
+      patch(() => {
+        function App() {
+          return null;
+        }
+        __register__(App, 'App');
+      });
+      expect(hostNodesForVisualFeedback.map(node => node.className)).toEqual([
+        'container',
+      ]);
+    }
+  });
+
+
+  fit('reports visual feedback for parents of deleted nodes', () => {
+    if (__DEV__) {
+      render(() => {
+        function Child({children}) {
+          return <div className="Child">{children}</div>;
+        }
+        __register__(Child, 'Child');
+        __signature__(Child, '1');
+
+        function Parent({children}) {
+          return (
+            <div className="Parent">
+              <div className="Parent-childWrapper">
+                <Child />
+              </div>
+              <div className="Parent-childWrapper">
+                <Child />
+              </div>
+            </div>
+          );
+        }
+        __register__(Parent, 'Parent');
+
+        function App() {
+          return (
+            <div className="App">
+              <Parent />
+              <Parent />
+            </div>
+          );
+        }
+        __register__(App, 'App');
+
+        return App;
+      });
+
+      // This edit will remount the Child component.
+      // As a result, we should highlight the wrappers instead.
+      patch(() => {
+        function Child({children}) {
+          return <div className="Child">{children}</div>;
+        }
+        __register__(Child, 'Child');
+        __signature__(Child, '2'); // This will force a remount.
+      });
+      expect(hostNodesForVisualFeedback.map(node => node.className)).toEqual([
+        'Parent-childWrapper',
+        'Parent-childWrapper',
+        'Parent-childWrapper',
+        'Parent-childWrapper',
+      ]);
     }
   });
 });

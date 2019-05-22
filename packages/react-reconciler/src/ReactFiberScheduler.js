@@ -88,6 +88,7 @@ import {
   Passive,
   Incomplete,
   HostEffectMask,
+  HotReloadingFeedback,
 } from 'shared/ReactSideEffectTags';
 import {
   NoWork,
@@ -121,6 +122,7 @@ import {
   commitDetachRef,
   commitAttachRef,
   commitResetTextContent,
+  commitHotReloadingFeedback,
 } from './ReactFiberCommitWork';
 import {enqueueUpdate} from './ReactUpdateQueue';
 // TODO: Ahaha Andrew is bad at spellling
@@ -1722,6 +1724,12 @@ function commitLayoutEffects(
 
     if (effectTag & Passive) {
       rootDoesHavePassiveEffects = true;
+    }
+
+    if (__DEV__) {
+      if (effectTag & HotReloadingFeedback) {
+        commitHotReloadingFeedback(nextEffect);
+      }
     }
 
     resetCurrentDebugFiberInDEV();

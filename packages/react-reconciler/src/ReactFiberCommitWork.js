@@ -71,6 +71,7 @@ import {onCommitUnmount} from './ReactFiberDevToolsHook';
 import {startPhaseTimer, stopPhaseTimer} from './ReactDebugFiberPerf';
 import {getStackByFiberInDevAndProd} from './ReactCurrentFiber';
 import {logCapturedError} from './ReactFiberErrorLogger';
+import {markInstanceForHotReloadingFeedback, replaceInstanceForHotReloadingFeedback} from './ReactFiberHotReloading';
 import {resolveDefaultProps} from './ReactFiberLazyComponent';
 import {getCommitTime} from './ReactProfilerTimer';
 import {commitUpdateQueue} from './ReactUpdateQueue';
@@ -1086,6 +1087,16 @@ function unmountHostComponents(current): void {
       currentParentIsValid = true;
     }
 
+    if (__DEV__) {
+      if (node.tag === HostComponent) {
+        console.log('yo', node.stateNode)
+        replaceInstanceForHotReloadingFeedback(
+          node.stateNode,
+          currentParent,
+        );
+      }
+    }
+
     if (node.tag === HostComponent || node.tag === HostText) {
       commitNestedUnmounts(node);
       // After all the children have unmounted, it is now safe to remove the
@@ -1335,6 +1346,50 @@ function commitResetTextContent(current: Fiber) {
   resetTextContent(current.stateNode);
 }
 
+function commitHotReloadingFeedback(current: Fiber) {
+  if (__DEV__) {
+    let node: Fiber = current;
+    let foundHostChildren = false;
+
+    traverseChildren: while (true) {
+      if (node.tag === HostComponent) {
+        foundHostChildren = true;
+        markInstanceForHotReloadingFeedback(node.stateNode);
+      } else if (node.child !== null) {
+        node.child.return = node;
+        node = node.child;
+        continue traverseChildren;
+      }
+      if (node === current) {
+        break traverseChildren;
+      }
+      while (node.sibling === null) {
+        if (node.return === null || node.return === current) {
+          break traverseChildren;
+        }
+        node = node.return;
+      }
+      node.sibling.return = node.return;
+      node = node.sibling;
+    }
+
+    if (!foundHostChildren) {
+      const parentFiber = getHostParentFiber(current);
+      switch (parentFiber.tag) {
+        case HostComponent:
+          markInstanceForHotReloadingFeedback(parentFiber.stateNode);
+          break;
+        case HostRoot:
+          markInstanceForHotReloadingFeedback(parentFiber.stateNode.containerInfo);
+          break;
+        case HostPortal:
+          markInstanceForHotReloadingFeedback(parentFiber.stateNode.containerInfo);
+          break;
+      }      
+    } 
+  }
+}
+
 export {
   commitBeforeMutationLifeCycles,
   commitResetTextContent,
@@ -1344,4 +1399,5 @@ export {
   commitLifeCycles,
   commitAttachRef,
   commitDetachRef,
+  commitHotReloadingFeedback,
 };
