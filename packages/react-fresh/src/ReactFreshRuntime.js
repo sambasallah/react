@@ -67,12 +67,29 @@ function isReactClass(type) {
   return type.prototype && type.prototype.isReactComponent;
 }
 
+function hasResetAnnotation(type) {
+  if (typeof type === 'function') {
+    let fnSource;
+    try {
+      fnSource = type.toString();
+    } catch (err) {
+      // Ignore.
+    }
+    if (typeof fnSource === 'string') {
+      return fnSource.indexOf('@hot reset') !== -1;
+    }
+  }
+  return false;
+}
+
 function areCompatible(prevType, nextType) {
   if (isReactClass(prevType) || isReactClass(nextType)) {
     return false;
   }
   if (haveEqualSignatures(prevType, nextType)) {
-    return true;
+    if (!hasResetAnnotation(nextType)) {
+      return true;
+    }
   }
   return false;
 }
