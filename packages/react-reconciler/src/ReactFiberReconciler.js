@@ -63,7 +63,10 @@ import {
 } from './ReactCurrentFiber';
 import {StrictMode} from './ReactTypeOfMode';
 import {Sync} from './ReactFiberExpirationTime';
-import {scheduleHotUpdate} from './ReactFiberHotReloading';
+import {
+  scheduleHotUpdate,
+  findHostNodesForHotUpdate,
+} from './ReactFiberHotReloading';
 
 type OpaqueRoot = FiberRoot;
 
@@ -435,6 +438,7 @@ export function injectIntoDevTools(devToolsConfig: DevToolsConfig): boolean {
 
   return injectInternals({
     ...devToolsConfig,
+    findHostNodesForHotUpdate: __DEV__ ? findHostNodesForHotUpdate : null,
     scheduleHotUpdate: __DEV__ ? scheduleHotUpdate : null,
     overrideHookState,
     overrideProps,
