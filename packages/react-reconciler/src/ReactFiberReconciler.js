@@ -64,8 +64,9 @@ import {
 import {StrictMode} from './ReactTypeOfMode';
 import {Sync} from './ReactFiberExpirationTime';
 import {
-  scheduleHotUpdate,
-  findHostInstancesForHotUpdate,
+  scheduleRefresh,
+  setRefreshHandler,
+  findHostInstancesForRefresh,
 } from './ReactFiberHotReloading';
 
 type OpaqueRoot = FiberRoot;
@@ -438,10 +439,6 @@ export function injectIntoDevTools(devToolsConfig: DevToolsConfig): boolean {
 
   return injectInternals({
     ...devToolsConfig,
-    findHostInstancesForHotUpdate: __DEV__
-      ? findHostInstancesForHotUpdate
-      : null,
-    scheduleHotUpdate: __DEV__ ? scheduleHotUpdate : null,
     overrideHookState,
     overrideProps,
     setSuspenseHandler,
@@ -461,5 +458,9 @@ export function injectIntoDevTools(devToolsConfig: DevToolsConfig): boolean {
       }
       return findFiberByHostInstance(instance);
     },
+    // React Refresh
+    findHostInstancesForRefresh: __DEV__ ? findHostInstancesForRefresh : null,
+    scheduleRefresh: __DEV__ ? scheduleRefresh : null,
+    setRefreshHandler: __DEV__ ? setRefreshHandler : null,
   });
 }
