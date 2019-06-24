@@ -65,6 +65,7 @@ import {StrictMode} from './ReactTypeOfMode';
 import {Sync} from './ReactFiberExpirationTime';
 import {
   scheduleRefresh,
+  scheduleRoot,
   setRefreshHandler,
   findHostInstancesForRefresh,
 } from './ReactFiberHotReloading';
@@ -461,6 +462,7 @@ export function injectIntoDevTools(devToolsConfig: DevToolsConfig): boolean {
     // React Refresh
     findHostInstancesForRefresh: __DEV__ ? findHostInstancesForRefresh : null,
     scheduleRefresh: __DEV__ ? scheduleRefresh : null,
+    scheduleRoot: __DEV__ ? scheduleRoot : null,
     setRefreshHandler: __DEV__ ? setRefreshHandler : null,
   });
 }

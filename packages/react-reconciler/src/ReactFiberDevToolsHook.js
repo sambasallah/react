@@ -10,6 +10,7 @@
 import type {Fiber} from './ReactFiber';
 import type {FiberRoot} from './ReactFiberRoot';
 
+import {DidCapture} from 'shared/ReactSideEffectTags';
 import warningWithoutStack from 'shared/warningWithoutStack';
 
 declare var __REACT_DEVTOOLS_GLOBAL_HOOK__: Object | void;
@@ -65,9 +66,10 @@ export function injectInternals(internals: Object): boolean {
   try {
     const rendererID = hook.inject(internals);
     // We have successfully injected, so now it is safe to set up hooks.
-    onCommitFiberRoot = catchErrors(root =>
-      hook.onCommitFiberRoot(rendererID, root),
-    );
+    onCommitFiberRoot = catchErrors(root => {
+      const didError = (root.current.effectTag & DidCapture) === DidCapture;
+      hook.onCommitFiberRoot(rendererID, root, undefined, didError);
+    });
     onCommitFiberUnmount = catchErrors(fiber =>
       hook.onCommitFiberUnmount(rendererID, fiber),
     );
