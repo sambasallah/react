@@ -73,6 +73,10 @@ describe('ReactFreshIntegration', () => {
         '$RefreshSig$',
         compiled,
       )(global, React, exportsObj, $RefreshReg$, $RefreshSig$);
+      // Module systems will register exports as a fallback.
+      // This is useful for cases when e.g. a class is exported,
+      // and we don't want to propagate the update beyond this module.
+      $RefreshReg$(exportsObj.default, 'exports.default');
       return exportsObj.default;
     }
 
@@ -88,7 +92,7 @@ describe('ReactFreshIntegration', () => {
     function patch(source) {
       execute(source);
       act(() => {
-        expect(ReactFreshRuntime.performReactRefresh()).not.toBe(null);
+        ReactFreshRuntime.performReactRefresh();
       });
       expect(ReactFreshRuntime._getMountedRootCount()).toBe(1);
     }
@@ -942,6 +946,54 @@ describe('ReactFreshIntegration', () => {
         expect(container.firstChild).not.toBe(el);
         el = container.firstChild;
         expect(el.textContent).toBe('C2');
+      }
+    });
+
+    it('resets state when switching between a function and a class', () => {
+      if (__DEV__) {
+        render(`
+          const {useState} = React;
+
+          class App extends React.PureComponent {
+            render() {
+              return <h1>A</h1>
+            }
+          }
+
+          export default App;
+        `);
+        let el = container.firstChild;
+        expect(el.textContent).toBe('A');
+
+        patch(`
+         const {useState} = React;
+
+          function App() {
+            return <h1>B</h1>;
+          }
+
+          export default App;
+        `);
+        // Replaced by a function.
+        expect(container.firstChild).not.toBe(el);
+        el = container.firstChild;
+        expect(el.textContent).toBe('B');
+
+        patch(`
+          const {useState} = React;
+
+          class App extends React.Component {
+            render() {
+              return <h1>C</h1>
+            }
+          }
+
+          export default App;
+        `);
+        // Replaced back by a class.
+        expect(container.firstChild).not.toBe(el);
+        el = container.firstChild;
+        expect(el.textContent).toBe('C');
       }
     });
 

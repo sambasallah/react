@@ -37,13 +37,10 @@ if (!__DEV__) {
 
 // In old environments, we'll leak previous types after every edit.
 const PossiblyWeakMap = typeof WeakMap === 'function' ? WeakMap : Map;
-const PossiblyWeakSet = typeof WeakSet === 'function' ? WeakSet : Set;
 
 // We never remove these associations.
 // It's OK to reference families, but use WeakMap/Set for types.
 const allFamiliesByID: Map<string, Family> = new Map();
-// $FlowIssue
-const allTypes: WeakSet<any> | Set<any> = new PossiblyWeakSet();
 const allSignaturesByType: // $FlowIssue
 WeakMap<any, Signature> | Map<any, Signature> = new PossiblyWeakMap();
 // This WeakMap is read by React, so we only put families
@@ -157,16 +154,26 @@ export function performReactRefresh(): RefreshUpdate | null {
     const staleFamilies = new Set();
     const updatedFamilies = new Set();
 
+    const seenTypes = new Set();
     const updates = pendingUpdates;
     pendingUpdates = [];
     updates.forEach(([family, nextType]) => {
-      // Now that we got a real edit, we can create associations
-      // that will be read by the React reconciler.
       const prevType = family.current;
-      familiesByType.set(prevType, family);
-      familiesByType.set(nextType, family);
+      if (prevType === nextType) {
+        return;
+      }
+      if (!seenTypes.has(nextType)) {
+        // Now that we got a real edit, we can create associations
+        // that will be read by the React reconciler.
+        familiesByType.set(prevType, family);
+        familiesByType.set(nextType, family);
+        // We keep track of which types were already processed in this generation.
+        // This is to ensure that in the case we register the same type multiple times
+        // with different families, we only set the `type => family` association once
+        // for the first encountered family -- as that's likely the definition site.
+        seenTypes.add(nextType);
+      }
       family.current = nextType;
-
       // Determine whether this should be a re-render or a re-mount.
       if (canPreserveStateBetween(prevType, nextType)) {
         updatedFamilies.add(family);
@@ -262,14 +269,6 @@ export function register(type: any, id: string): void {
     if (typeof type !== 'function' && typeof type !== 'object') {
       return;
     }
-
-    // This can happen in an edge case, e.g. if we register
-    // return value of a HOC but it returns a cached component.
-    // Ignore anything but the first registration for each type.
-    if (allTypes.has(type)) {
-      return;
-    }
-    allTypes.add(type);
 
     // Create family or remember to update it.
     // None of this bookkeeping affects reconciliation
