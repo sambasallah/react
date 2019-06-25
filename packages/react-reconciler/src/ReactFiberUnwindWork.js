@@ -108,6 +108,7 @@ function createClassErrorUpdate(
   if (typeof getDerivedStateFromError === 'function') {
     const error = errorInfo.value;
     update.payload = () => {
+      logError(fiber, errorInfo);
       return getDerivedStateFromError(error);
     };
   }
@@ -125,10 +126,10 @@ function createClassErrorUpdate(
         // TODO: Warn in strict mode if getDerivedStateFromError is
         // not defined.
         markLegacyErrorBoundaryAsFailed(this);
+        logError(fiber, errorInfo);
       }
       const error = errorInfo.value;
       const stack = errorInfo.stack;
-      logError(fiber, errorInfo);
       this.componentDidCatch(error, {
         componentStack: stack !== null ? stack : '',
       });
