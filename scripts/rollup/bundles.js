@@ -464,14 +464,14 @@ const bundles = [
 
   /******* React Fresh *******/
   {
-    bundleTypes: [NODE_DEV, NODE_PROD],
+    bundleTypes: [NODE_DEV, NODE_PROD, FB_WWW_DEV],
     moduleType: ISOMORPHIC,
     entry: 'react-refresh/babel',
     global: 'ReactFreshBabelPlugin',
     externals: [],
   },
   {
-    bundleTypes: [NODE_DEV, NODE_PROD],
+    bundleTypes: [NODE_DEV, NODE_PROD, FB_WWW_DEV],
     moduleType: ISOMORPHIC,
     entry: 'react-refresh/runtime',
     global: 'ReactFreshRuntime',
