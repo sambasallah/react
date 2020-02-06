@@ -80,7 +80,7 @@ export type ViewConfigGetter = () => ReactNativeBaseComponentViewConfig<>;
 /**
  * Class only exists for its Flow type.
  */
-class ReactNativeComponent<Props> extends React.Component<Props> {
+class ReactNativeComponent extends React.Component {
   blur(): void {}
   focus(): void {}
   measure(callback: MeasureOnSuccessCallback): void {}
@@ -94,9 +94,7 @@ class ReactNativeComponent<Props> extends React.Component<Props> {
 }
 
 // This type is only used for FlowTests. It shouldn't be imported directly
-export type _InternalReactNativeComponentClass<Props> = Class<
-  ReactNativeComponent<Props>,
->;
+export type _InternalReactNativeComponentClass<Props> = Class<ReactNativeComponent>;
 
 /**
  * This type keeps ReactNativeFiberHostComponent and NativeMethodsMixin in sync.
